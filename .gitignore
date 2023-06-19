@@ -1,0 +1,24 @@
+# Vscode
+.vscode/
+
+# Executables
+*.o
+*.hex
+*.bin
+*.out
+
+drivers/*.o
+kernel/*.o
+
+# Temporary
+work/
+
+# Other
+*.txt
+*.rch8
+
+# Not in use
+include/chip8.h
+include/filesys.h
+api.c
+io.c
