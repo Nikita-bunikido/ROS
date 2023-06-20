@@ -30,7 +30,6 @@ do {\
 
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
 static int output_entry_stack_size = 0;
-
 static volatile v2 cursor = { 0, 0 };
 
 static inline __attribute__((always_inline)) uint16_t vga_to_rgb565(const uint8_t vga)
@@ -77,7 +76,6 @@ static void apply_output_entrys(void)
         BIT_OFF(PORTB, 1); /* Stop data stream*/
     }
 }
-
 
 static v2 update_cursor(void) {
     if (cursor.x + 1 >= SCREEN_WIDTH / LETTER_WIDTH){
@@ -170,25 +168,20 @@ void ros_printf(uint8_t attrib, const char *format, ...) {
         }
 
         switch (*++format) {
-        case 'd':
-        case 'D':
+        case 'd': case 'D':
             buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%d", va_arg(vptr, int));
             break;
         
-        case 's':
-        case 'S':
+        case 's': case 'S':
             buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%s", va_arg(vptr, char *));
             break;
         
-        case 'f':
-        case 'F':
-        case 'g':
-        case 'G':
+        case 'f': case 'F':
+        case 'g': case 'G':
             buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%f", va_arg(vptr, double));
             break;
 
-        case 'c':
-        case 'C':
+        case 'c': case 'C':
             output_buffer[buffer_pos++] = (char)va_arg(vptr, int);
             break;
 
