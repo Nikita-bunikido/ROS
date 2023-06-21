@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stdio.h>
+#include <ctype.h>
 #include <string.h>
 
 #include <util/delay.h>
@@ -58,9 +59,9 @@ static void __callback keyboard_nonprintable_tab(void) {
 /* without SHIFT mode and with SHIFT mode. Pairs starting with \xff are indexes */
 /* for following functions to process non-printable characters. */
 static const uint8_t char_decode_table[] PROGMEM =
-"\xff\x00\xff\x01mM,<.>/?\xff\x02\xff\x03  \xff\x04\xff\x05\xff\x06"
-"zZxXcCvVbBnNfFgGhHjJkKlL;:\'\"pP[{]}\\|\xff\x07aAsSdDwWeErRtTyYuU"
-"iIoO8*9(0)-_=+\xff\x08\xff\x09qQ`~1!2@3#4$5%6^7&";
+"\xff\x00" "\xff\x01" "mM,<.>/?" "\xff\x02\xff\x03" "  " "\xff\x04\xff\x05\xff\x06"
+"zZxXcCvVbBnNfFgGhHjJkKlL;:\'\"pP[{]}\\|" "\xff\x07" "aAsSdDwWeErRtTyYuUiIoO8*9(0)"
+"-_=+\xff\x08\xff\x09qQ`~1!2@3#4$5%6^7&";
 
 static bool shift_mode = false, caps_mode = false;
 
@@ -78,8 +79,6 @@ static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[10] 
 };
 
 int vk_as_char(enum Virtual_Key key) {
-    shift_mode = false;
-
     if (key == VK_SHIFT) {
         shift_mode = true;
         return -1; /* Not printable */
@@ -95,7 +94,9 @@ int vk_as_char(enum Virtual_Key key) {
         return -1; /* Not printable */
     }
 
-    return (caps_mode || shift_mode) ? HI8(kdata) : LO8(kdata);
+    int ret = ((caps_mode && islower(LO8(kdata))) || shift_mode) ? HI8(kdata) : LO8(kdata);    
+    shift_mode = false;
+    return ret;
 }
 
 void keyboard_init(Keyboard_User_Callback callback) {
