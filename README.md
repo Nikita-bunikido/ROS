@@ -1,6 +1,6 @@
-## ROS
+# ROS
 
-![ROS demo](pict/demo0.png)
+![ROS demo](pict/demo1.png)
 
 ### Introduction
 
@@ -21,7 +21,7 @@ System works with filesystem located directly in _EEPROM chips_.
 - **Screen** : ST7735 based 128x160 px TFT display
 - **Keyboard** : Custom keyboard which uses _74hc165 shift registers_
 - **CPU** : ATmega328P
-...
+- ...
 
 ### Build
 
@@ -53,4 +53,4 @@ Using Makefile:
   - CHIP8 assembler
   - Basic interpreter
 - Custom file formats support
-...
+- ...
