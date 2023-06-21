@@ -18,8 +18,11 @@
 #include "font.h"
 #include "ros.h"
 
-void keyboard_callback(unsigned char physical_key){
-    ros_printf(0xF, "Key %c pressed\n", physical_key);
+void keyboard_callback(enum Virtual_Key vk){
+    int ch = vk_as_char(vk);
+
+    if (ch > 0)
+        ros_putchar(0xF, ch);
     ros_apply_output_entrys();
 }
 

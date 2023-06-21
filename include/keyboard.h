@@ -8,6 +8,16 @@
 #define KEYBOARD_CLK_PIN    1
 #define KEYBOARD_SO_PIN     2
 
-__driver void keyboard_init(void (*callback)(unsigned char));
+#define KEY(sym,code)   VK_##sym = code,
+enum Virtual_Key {
+    #include "keyboard.def"
+};
+#undef KEY
+
+typedef void (*__callback Keyboard_Nonprintable_Callback)(void);
+typedef void (*__callback Keyboard_User_Callback)(enum Virtual_Key);
+
+__driver int vk_as_char(enum Virtual_Key key);
+__driver void keyboard_init(Keyboard_User_Callback);
 
 #endif /* _KEYBOARD_H */

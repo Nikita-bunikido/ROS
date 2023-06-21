@@ -25,6 +25,8 @@
 #define USED                __attribute__((used))
 #define USED_NOINLINE       __attribute__((used, noinline))
 
+#define __callback          USED_NOINLINE
+
 /* -------------- Screen --------------------- */
 #define SCREEN_WIDTH        (128 - 1)
 #define SCREEN_HEIGHT       (160 - 1)
