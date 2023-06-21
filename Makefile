@@ -8,6 +8,7 @@ CFLAGS = -DF_CPU=$(F_CPU) -Ofast -g -mmcu=$(DEVICE)
 CFLAGS += -I include/
 CFLAGS += -Wall -Wpedantic -Wextra 
 CFLAGS += -Wno-array-bounds -Wno-format -Wno-pointer-arith
+CFLAGS += -funsigned-char
 
 # Objects
 DRIVERS_DIR = drivers
