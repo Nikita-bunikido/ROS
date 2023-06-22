@@ -35,20 +35,11 @@ void ros_printf(uint8_t, const char *, ...) __attribute__((format(printf, 2, 3))
 void ros_putchar(uint8_t, const char);
 void ros_puts(uint8_t, const char *, bool);
 
-#ifndef NDEBUG
-    void ros_apply_output_entrys(void);
-#endif
+void ros_apply_output_entrys(void);
+
+void ros_cursor_copy(const char *, int, int);
 
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }
-
-extern void __callback keyboard_nonprintable_down_arrow(void);
-extern void __callback keyboard_nonprintable_right_arrow(void);
-extern void __callback keyboard_nonprintable_up_arrow(void);
-extern void __callback keyboard_nonprintable_control(void);
-extern void __callback keyboard_nonprintable_left_arrow(void);
-extern void __callback keyboard_nonprintable_enter(void);
-extern void __callback keyboard_nonprintable_backspace(void);
-extern void __callback keyboard_nonprintable_tab(void);
 
 #endif /* _VIDEO_H */

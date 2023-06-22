@@ -29,8 +29,7 @@ do {\
 #define OUTPUT_ENTRY_POP(e)\
     (e) = output_entry_stack[--output_entry_stack_size]
 
-/* Global cursor */
-volatile v2 cursor = { 0, 0 };
+static volatile v2 cursor = { 0, 0 };
 
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
 static int output_entry_stack_size = 0;
@@ -99,7 +98,6 @@ static v2 move_cursor_backward(void) {
     return cursor;
 }
 
-/* ---------------------- Exports ---------------------- */
 void ros_putchar(uint8_t attrib, const char ch) {
     struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib, .data = (unsigned char)ch };
     OUTPUT_ENTRY_PUSH(oe);
@@ -203,44 +201,23 @@ void ros_printf(uint8_t attrib, const char *format, ...) {
     ros_puts(attrib, output_buffer, false);
 }
 
+void ros_apply_output_entrys(void) {
 #ifndef NDEBUG
-    void ros_apply_output_entrys(void) {
-        apply_output_entrys();
-    }
+    apply_output_entrys();
 #endif
-
-/* ---------------------- Video-related keyboard callbacks ---------------------- */
-
-void __callback keyboard_nonprintable_down_arrow(void){
-    ;
 }
 
-void __callback keyboard_nonprintable_right_arrow(void){
-    ;
-}
+void ros_cursor_copy(const char *buffer, int disp, int overlap) {
+    const v2 old_cursor = cursor;
+    
+    while (disp --)
+        move_cursor_forward();
 
-void __callback keyboard_nonprintable_up_arrow(void){
-    ;
-}
+    ros_puts(0xF, buffer, false);
 
-void __callback keyboard_nonprintable_control(void){
-    ;
-}
+    if (overlap > 0)
+        while (overlap --)
+            ros_putchar(0xF, 0x20);
 
-void __callback keyboard_nonprintable_left_arrow(void){
-    ;
-}
-
-void __callback keyboard_nonprintable_enter(void){
-    cursor.x = 0;
-    cursor.y ++;
-}
-
-void __callback keyboard_nonprintable_backspace(void){
-    move_cursor_backward();
-}
-
-void __callback keyboard_nonprintable_tab(void){
-    ros_putchar(0xF, ' ');
-    ros_putchar(0xF, ' ');
+    cursor = old_cursor;
 }

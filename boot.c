@@ -19,18 +19,9 @@
 #include "video.h"
 #include "ros.h"
 
-void keyboard_callback(enum Virtual_Key vk){
-    int ch = vk_as_char(vk);
-
-    if (ch > 0)
-        ros_putchar(0xF, ch);
-
-#ifndef NDEBUG
-    ros_apply_output_entrys();
-#endif
-}
-
 int main(void){
+    extern void keyboard_callback(enum Virtual_Key); /* ros.c */
+
     SPI = spi_get();
     spi_device_init();
     st7735_init();
@@ -50,5 +41,7 @@ int main(void){
     ros_apply_output_entrys();
 
     sei();
+    sys_mode = SYSTEM_MODE_INPUT;
+
     for(;;){}
 }

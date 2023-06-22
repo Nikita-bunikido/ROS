@@ -46,7 +46,8 @@ int vk_as_char(enum Virtual_Key key) {
     uint16_t kdata = pgm_read_word(&char_decode_table[key * 2]);
 
     if (LO8(kdata) == 0xFF) {
-        keyboard_nonprintable_callbacks[HI8(kdata)]();
+        if (sys_mode == SYSTEM_MODE_INPUT)
+            keyboard_nonprintable_callbacks[HI8(kdata)]();
         return -1; /* Not printable */
     }
 
@@ -67,6 +68,9 @@ void keyboard_init(Keyboard_User_Callback callback) {
 }
 
 ISR(INT0_vect) {
+    if (sys_mode == SYSTEM_MODE_BUSY)
+        return;
+
     BIT_OFF(PORTC, KEYBOARD_SHLD_PIN);
     _delay_ms(KEYBOARD_DELAY_MS);
     BIT_ON(PORTC, KEYBOARD_SHLD_PIN);
