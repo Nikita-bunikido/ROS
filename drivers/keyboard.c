@@ -9,51 +9,12 @@
 #include <avr/interrupt.h>
 
 #include "ros.h"
+#include "video.h"
 #include "keyboard.h"
 
 #define KEYBOARD_DELAY_MS       0
 
 static Keyboard_User_Callback keyboard_callback = NULL;
-
-static void __callback keyboard_nonprintable_down_arrow(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_right_arrow(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_up_arrow(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_control(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_left_arrow(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_enter(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_shift(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_capslock(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_backspace(void) {
-    __asm__ __volatile__( "nop" );
-}
-
-static void __callback keyboard_nonprintable_tab(void) {
-    __asm__ __volatile__( "nop" );
-}
 
 /* This is lookup table for optimization, structured as pairs of characters */
 /* without SHIFT mode and with SHIFT mode. Pairs starting with \xff are indexes */
@@ -64,6 +25,9 @@ static const uint8_t char_decode_table[] PROGMEM =
 "-_=+\xff\x08\xff\x09qQ`~1!2@3#4$5%6^7&";
 
 static bool shift_mode = false, caps_mode = false;
+
+static void __callback keyboard_nonprintable_shift(void) { shift_mode = true; }
+static void __callback keyboard_nonprintable_capslock(void) { caps_mode = !caps_mode; }
 
 static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[10] = {
     keyboard_nonprintable_down_arrow,
@@ -79,14 +43,6 @@ static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[10] 
 };
 
 int vk_as_char(enum Virtual_Key key) {
-    if (key == VK_SHIFT) {
-        shift_mode = true;
-        return -1; /* Not printable */
-    } else if (key == VK_CAPSLOCK) {
-        caps_mode = !caps_mode;
-        return -1; /* Not printable */
-    }
-
     uint16_t kdata = pgm_read_word(&char_decode_table[key * 2]);
 
     if (LO8(kdata) == 0xFF) {

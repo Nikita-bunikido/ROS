@@ -16,6 +16,7 @@
 #include "keyboard.h"
 
 #include "font.h"
+#include "video.h"
 #include "ros.h"
 
 void keyboard_callback(enum Virtual_Key vk){
@@ -23,7 +24,10 @@ void keyboard_callback(enum Virtual_Key vk){
 
     if (ch > 0)
         ros_putchar(0xF, ch);
+
+#ifndef NDEBUG
     ros_apply_output_entrys();
+#endif
 }
 
 int main(void){
