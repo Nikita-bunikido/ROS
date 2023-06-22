@@ -1,7 +1,6 @@
 #ifndef _KEYBOARD_H
 #define _KEYBOARD_H
 
-#include "driver.h"
 #include "ros.h"
 
 #define KEYBOARD_SHLD_PIN   0

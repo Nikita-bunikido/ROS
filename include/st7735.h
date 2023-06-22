@@ -3,7 +3,6 @@
 
 #include <avr/io.h>
 
-#include "driver.h"
 #include "ros.h"
 
 enum ST7735_Command_Type {

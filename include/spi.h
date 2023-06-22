@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <avr/io.h>
 
-#include "driver.h"
 #include "ros.h"
 
 #define SPI_SCK_FREQUENCY_PRESCALER     4
