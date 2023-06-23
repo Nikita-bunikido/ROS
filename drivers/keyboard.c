@@ -92,4 +92,8 @@ ISR(INT0_vect) {
 
     if (keyboard_callback != NULL)
         keyboard_callback(idx - 1);
+
+    ros_apply_output_entrys();
+    draw_graphic_cursor();
+    ros_apply_output_entrys();
 }

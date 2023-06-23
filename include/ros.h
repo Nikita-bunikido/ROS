@@ -24,6 +24,11 @@
 
 #define INPUT_BUFFER_CAP    260
 
+struct Input_Buffer {
+    int cursor;
+    char raw[INPUT_BUFFER_CAP];
+};
+
 enum System_Mode {
     SYSTEM_MODE_INPUT = 0,  /* Command mode\Listening to input */
     SYSTEM_MODE_BUSY,       /* System is busy and doesn't listen any input */

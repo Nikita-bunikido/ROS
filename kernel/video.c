@@ -34,7 +34,7 @@ static volatile v2 cursor = { 0, 0 };
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
 static int output_entry_stack_size = 0;
 
-static inline __attribute__((always_inline)) uint16_t vga_to_rgb565(const uint8_t vga) {
+static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const uint8_t vga) {
     uint16_t result = 0;
     if (vga & 0x1) result |= 0x1F << 11;
     if (vga & 0x2) result |= 0x3F << 5;
@@ -51,7 +51,9 @@ static void letter_lookup(uint8_t *dest, unsigned char let, uint8_t attrib, size
 
     for (unsigned row = 0; (row < LETTER_HEIGHT) && (dest_size > 0); ++row)
     for (unsigned col = 0; (col < LETTER_WIDTH) && (dest_size > 0); ++col, dest_size -= 2){
-        *(uint16_t *)dest = vga_to_rgb565(attrib >> (((pgm_read_byte(&font[(int)let][row]) >> col) & 1) ? 0 : 4));
+        
+        bool underline = (!!BIT_EXT(attrib, 3)) && (row == LETTER_HEIGHT - 1);
+        *(uint16_t *)dest = vga_to_rgb565(attrib >> ((((pgm_read_byte(&font[(int)let][row]) >> col) & 1) || underline) ? 0 : 4));
         dest += 2;
     }
 }
@@ -84,17 +86,6 @@ static v2 move_cursor_forward(void) {
     }
 
     cursor.x ++;
-    return cursor;
-}
-
-static v2 move_cursor_backward(void) {
-    if (((int)cursor.x - 1) < 0){
-        cursor.x = SCREEN_WIDTH / LETTER_WIDTH - LETTER_WIDTH;
-        cursor.y --;
-        return cursor;
-    }
-
-    cursor.x --;
     return cursor;
 }
 
@@ -207,17 +198,44 @@ void ros_apply_output_entrys(void) {
 #endif
 }
 
-void ros_cursor_copy(const char *buffer, int disp, int overlap) {
+extern struct Input_Buffer ibuffer; /* from ros.c */
+
+void ros_put_input_buffer(int disp, int overlap) {
     const v2 old_cursor = cursor;
-    
+    const int odisp = disp;
+
     while (disp --)
         move_cursor_forward();
-
-    ros_puts(0xF, buffer, false);
+    
+    ros_puts(0x7, ibuffer.raw + odisp, false);
 
     if (overlap > 0)
         while (overlap --)
-            ros_putchar(0xF, 0x20);
+            ros_putchar(0x7, 0x20);
 
     cursor = old_cursor;
 }
+
+void draw_graphic_cursor(void) {
+    v2 target = cursor;
+    
+    if (sys_mode != SYSTEM_MODE_BUSY)
+        target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + ibuffer.cursor / (SCREEN_WIDTH / LETTER_WIDTH)) };
+
+    v2 old_cursor = cursor;
+    cursor = target;
+    ros_putchar(0xF, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
+    
+    cursor = old_cursor;
+}
+
+void clear_screen(void) {
+    st7735_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+
+    BIT_ON(PORTB, 1); /* Start data stream */
+    for (size_t i = 0; i < (size_t)((SCREEN_WIDTH + 1) * (SCREEN_HEIGHT + 1)) * 2; i++)
+        spi_device_transfer_byte(0);
+    BIT_OFF(PORTB, 1); /* Stop data stream*/
+}
+
+void ros_prompt(void) { ros_puts(0x7, "~> ", false); }
