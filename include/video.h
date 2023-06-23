@@ -11,14 +11,14 @@ typedef struct {
 } v2;
 
 struct PACKED Attribute {
-    unsigned int fore_r   : 1;
-    unsigned int fore_g   : 1;
-    unsigned int fore_b   : 1;
-    unsigned int reserved : 1;
-    unsigned int back_r   : 1;
-    unsigned int back_g   : 1;
-    unsigned int back_b   : 1;
-    unsigned int blink    : 1;
+    unsigned int fore_r    : 1;
+    unsigned int fore_g    : 1;
+    unsigned int fore_b    : 1;
+    unsigned int underline : 1;
+    unsigned int back_r    : 1;
+    unsigned int back_g    : 1;
+    unsigned int back_b    : 1;
+    unsigned int blink     : 1;
 };
 static_assert(sizeof(struct Attribute) == 1);
 
@@ -37,7 +37,12 @@ void ros_puts(uint8_t, const char *, bool);
 
 void ros_apply_output_entrys(void);
 
-void ros_cursor_copy(const char *, int, int);
+void ros_put_input_buffer(int, int);
+
+void ros_prompt(void);
+
+void draw_graphic_cursor(void);
+void clear_screen(void);
 
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }

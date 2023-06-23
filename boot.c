@@ -32,12 +32,16 @@ int main(void){
         .back_b = 1,
         .back_g = 0,
         .back_r = 0,
-        .reserved = 0,
+        .underline = 0,
         .fore_b = 1,
         .fore_g = 1,
         .fore_r = 1
     };
     ros_printf(struct_attribute_to_raw(sa), "Welcome to ROS!\n");
+    ros_prompt();
+
+    draw_graphic_cursor();
+    clear_screen();
     ros_apply_output_entrys();
 
     sei();
