@@ -110,6 +110,25 @@ void ros_puts(uint8_t attrib, const char *str, bool new_line) {
     }
 }
 
+void ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
+    struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib };
+    char ch;
+
+    while ((ch = pgm_read_byte(str)) != '\0') {
+        oe.data = ch;
+        OUTPUT_ENTRY_PUSH(oe);
+
+        oe.pos = move_cursor_forward();
+        str ++;
+    }
+
+    if (new_line) {
+        cursor.x = 0;
+        cursor.y ++;
+        return;
+    }
+}
+
 void ros_printf(uint8_t attrib, const char *format, ...) {
     va_list vptr;
     static char output_buffer[21];
@@ -238,4 +257,4 @@ void clear_screen(void) {
     BIT_OFF(PORTB, 1); /* Stop data stream*/
 }
 
-void ros_prompt(void) { ros_puts(0x7, "~> ", false); }
+void ros_prompt(void) { ros_puts(0x7, "$ ", false); }

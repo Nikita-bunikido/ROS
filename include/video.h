@@ -34,6 +34,7 @@ struct PACKED Output_Entry {
 void ros_printf(uint8_t, const char *, ...) __attribute__((format(printf, 2, 3)));
 void ros_putchar(uint8_t, const char);
 void ros_puts(uint8_t, const char *, bool);
+void ros_puts_P(uint8_t, const unsigned char *, bool);
 
 void ros_apply_output_entrys(void);
 
