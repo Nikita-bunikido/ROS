@@ -47,5 +47,4 @@ void ros_log(enum Log_Type type, const char *format, ...) {
     ros_puts(pgm_read_byte(&prefix_colors[type]), USTR(type_cstr), false);
     ros_putchar(ATTRIBUTE_DEFAULT, ' ');
     ros_vprintf(ATTRIBUTE_DEFAULT, format, vptr);  
-    va_end(vptr);
 }
