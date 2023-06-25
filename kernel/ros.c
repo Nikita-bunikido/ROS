@@ -4,6 +4,7 @@
 #include <inttypes.h>
 #include <string.h>
 
+#include <util/delay.h>
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
@@ -37,7 +38,6 @@ void ros_set_pin_direction(volatile uint8_t *port, volatile uint8_t *ddr, int pi
     }
 }
 
-/* Global buffer */
 struct Input_Buffer ibuffer = { 0 };
 
 void keyboard_callback(enum Virtual_Key vk){

@@ -1,9 +1,13 @@
 #ifndef _ST7735_H
 #define _ST7735_H
 
+#include <stddef.h>
 #include <avr/io.h>
 
 #include "ros.h"
+
+#define ST7735_MAX_ARGS     24
+#define ST7735_DC_PIN       1
 
 enum ST7735_Command_Type {
     ST7735_NOP       = 0x00,
@@ -65,16 +69,15 @@ enum ST7735_Command_Type {
 
 typedef struct ST7735_Command {
     uint8_t type;
-    int nargs;
+    unsigned short nargs;
 
-    uint8_t args[24];
+    uint8_t args[ST7735_MAX_ARGS];
     uint8_t delay_after;
 } ST7735_Command;
 
-__driver void st7735_init(void);
-__driver void st7735_set_window(uint8_t, uint8_t, uint8_t, uint8_t);
-__driver void st7735_deinit(void);
-__driver void st7735_freeze(void);
-__driver void st7735_unfreeze(void);
+void __driver st7735_init(void);
+void __driver st7735_set_window(uint8_t, uint8_t, uint8_t, uint8_t);
+void __driver st7735_freeze(void);
+void __driver st7735_unfreeze(void);
 
 #endif /* _ST7735_H */

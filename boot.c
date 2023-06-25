@@ -1,15 +1,5 @@
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <assert.h>
-#include <stdarg.h>
-
-#include <util/delay.h>
-#include <avr/io.h>
-#include <avr/pgmspace.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 
 #include "spi.h"
 #include "st7735.h"
@@ -34,20 +24,21 @@ static const unsigned char preview[] PROGMEM = {
 };
 
 void ros_bootup(void) {
-    extern void keyboard_callback(enum Virtual_Key); /* ros.c */
+    /* from ros.c */
+    extern void keyboard_callback(enum Virtual_Key);
 
     /* Drivers init */
-    SPI = spi_get();
     spi_device_init();
     st7735_init();
     keyboard_init(keyboard_callback);
 
     /* Screen init */
     clear_screen();
-    ros_puts_P(0x7, preview, true);
-    ros_puts(0x7, "Welcome to ROS!", true);
-    ros_prompt();
-    draw_graphic_cursor();
+    ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
+    ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
+    ros_put_prompt();
+    ros_put_graphic_cursor();
+
     ros_apply_output_entrys();
 
     /* Enter input mode */

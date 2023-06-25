@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <stdbool.h>
 #include <string.h>
 
 #include <avr/io.h>
@@ -17,28 +18,28 @@
 
 #define OUTPUT_ENTRY_STACK_CAP      20
 
-#define OUTPUT_ENTRY_PUSH(e)\
-do {\
-    if (output_entry_stack_size <= OUTPUT_ENTRY_STACK_CAP - 1){\
-        output_entry_stack[output_entry_stack_size ++] = (e);\
-        break;\
-    }\
-    apply_output_entrys();\
-} while( 1 )
+#define OUTPUT_ENTRY_PUSH(e)                                    \
+do {                                                            \
+    if (output_entry_stack_size <= OUTPUT_ENTRY_STACK_CAP - 1){ \
+        output_entry_stack[output_entry_stack_size ++] = (e);   \
+        break;                                                  \
+    }                                                           \
+    apply_output_entrys();                                      \
+} while( 1 )                                                    \
 
-#define OUTPUT_ENTRY_POP(e)\
-    (e) = output_entry_stack[--output_entry_stack_size]
+#define OUTPUT_ENTRY_POP(e)                                     \
+    (e) = output_entry_stack[--output_entry_stack_size]         \
 
 static volatile v2 cursor = { 0, 0 };
 
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
-static int output_entry_stack_size = 0;
+static unsigned short output_entry_stack_size = 0;
 
-static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const uint8_t vga) {
+static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const uint8_t raw) {
     uint16_t result = 0;
-    if (vga & 0x1) result |= 0x1F << 11;
-    if (vga & 0x2) result |= 0x3F << 5;
-    if (vga & 0x4) result |= 0x1F << 0;
+    if (raw & 0x1) result |= 0x1F << 11;
+    if (raw & 0x2) result |= 0x3F << 5;
+    if (raw & 0x4) result |= 0x1F << 0;
     return (result << 8) | (result >> 8); /* LE -> BE */
 }
 
@@ -46,8 +47,8 @@ static void letter_lookup(uint8_t *dest, unsigned char let, uint8_t attrib, size
     if (!dest)
         return;
 
-    if (let > (sizeof(font) / 8))
-        let = '?';
+    if (let > (sizeof(font) / 8) - 1)
+        let = (sizeof(font) / 8) - 1;
 
     for (unsigned row = 0; (row < LETTER_HEIGHT) && (dest_size > 0); ++row)
     for (unsigned col = 0; (col < LETTER_WIDTH) && (dest_size > 0); ++col, dest_size -= 2){
@@ -59,22 +60,22 @@ static void letter_lookup(uint8_t *dest, unsigned char let, uint8_t attrib, size
 }
 
 static void apply_output_entrys(void) {
-    uint8_t letter_buffer[LETTER_WIDTH * LETTER_HEIGHT * 2];
+    static uint8_t letter_buffer[LETTER_WIDTH * LETTER_HEIGHT * 2];
     struct Output_Entry entry;
     
     while (output_entry_stack_size > 0){
         OUTPUT_ENTRY_POP(entry);
         v2 cur_pos = { entry.pos.x * LETTER_WIDTH, entry.pos.y * LETTER_HEIGHT };
 
-        if (strchr("\n\r\v\t\a\f", entry.data) != NULL)
+        if ((strchr("\n\r\v\t\a\f", entry.data) != NULL) || (entry.data < ' '))
             continue;
 
         letter_lookup(letter_buffer, entry.data, struct_attribute_to_raw(entry.attrib), sizeof(letter_buffer));
         st7735_set_window(cur_pos.x, cur_pos.y, cur_pos.x + LETTER_WIDTH - 1, cur_pos.y + LETTER_HEIGHT - 1);
             
-        BIT_ON(PORTB, 1); /* Start data stream */
+        BIT_ON(PORTB, ST7735_DC_PIN);
         spi_device_transfer_buffer(letter_buffer, sizeof(letter_buffer));
-        BIT_OFF(PORTB, 1); /* Stop data stream*/
+        BIT_OFF(PORTB, ST7735_DC_PIN);
     }
 }
 
@@ -89,29 +90,33 @@ static v2 move_cursor_forward(void) {
     return cursor;
 }
 
-void ros_putchar(uint8_t attrib, const char ch) {
-    struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib, .data = (unsigned char)ch };
-    OUTPUT_ENTRY_PUSH(oe);
-    (void)move_cursor_forward();
+unsigned char ros_putchar(uint8_t attrib, const unsigned char ch) {
+    OUTPUT_ENTRY_PUSH((struct Output_Entry){ .pos = cursor COMMA .attrib_raw = attrib COMMA .data = ch });
+    move_cursor_forward();
+    return ch;
 }
 
-void ros_puts(uint8_t attrib, const char *str, bool new_line) {
+int ros_puts(uint8_t attrib, const unsigned char *str, bool new_line) {
     struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib };
+    int printed;
 
-    for(; *str; str++, oe.pos = move_cursor_forward()){
+    for(printed = 0; *str; str++, oe.pos = move_cursor_forward()){
         oe.data = *str;
+        printed ++;
         OUTPUT_ENTRY_PUSH(oe);
     }
 
-    if (new_line) {
-        cursor.x = 0;
-        cursor.y ++;
-        return;
-    }
+    if (!new_line)
+        return printed;
+
+    cursor.x = 0;
+    cursor.y ++;
+    return ++printed;
 }
 
-void ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
+int ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
     struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib };
+    int printed = 0;
     char ch;
 
     while ((ch = pgm_read_byte(str)) != '\0') {
@@ -120,32 +125,33 @@ void ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
 
         oe.pos = move_cursor_forward();
         str ++;
+        printed ++;
     }
 
-    if (new_line) {
-        cursor.x = 0;
-        cursor.y ++;
-        return;
-    }
+    if (!new_line)
+        return printed;
+
+    cursor.x = 0;
+    cursor.y ++;
+    return ++printed;
 }
 
-void ros_printf(uint8_t attrib, const char *format, ...) {
+int ros_printf(uint8_t attrib, const char *format, ...) {
     va_list vptr;
     static char output_buffer[21];
-    unsigned buffer_pos;
+    int printed;
+    unsigned short buffer_pos;
 
     va_start(vptr, format);
 
-    if (strchr(format, '%') == NULL){
-        /* No formats */
-        ros_puts(attrib, format, format[strlen(format) - 1] == '\n');
-        return;
-    }
+    /* No formats */
+    if (strchr(format, '%') == NULL)
+        return ros_puts(attrib, USTR(format), format[strlen(format) - 1] == '\n');
 
-    for (buffer_pos = 0; *format && buffer_pos < (int)sizeof(output_buffer); format++){
+    for (buffer_pos = 0, printed = 0; *format && buffer_pos < sizeof(output_buffer); format++){
         bool seq = true;
 
-        switch (*format){
+        switch (*format) {
         case '\b':
             buffer_pos -= !!(buffer_pos > 0);
             break;
@@ -157,11 +163,12 @@ void ros_printf(uint8_t attrib, const char *format, ...) {
         case '\t':
             output_buffer[buffer_pos] = output_buffer[buffer_pos + 1] = ' ';
             buffer_pos += 2;
+            printed += 2;
             break;
 
         case '\n':
             output_buffer[buffer_pos] = '\0';
-            ros_puts(attrib, output_buffer, true);
+            printed += ros_puts(attrib, USTR(output_buffer), true);
 
             buffer_pos = 0;
             break;
@@ -176,25 +183,27 @@ void ros_printf(uint8_t attrib, const char *format, ...) {
         
         if (*format != '%'){
             output_buffer[buffer_pos++] = *format;
+            printed ++;
             continue;
         }
 
+        unsigned short plen = 0;
         switch (*++format) {
         case 'd': case 'D':
-            buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%d", va_arg(vptr, int));
+            plen = snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%d", va_arg(vptr, int));
             break;
 
         case 'x': case 'X':
-            buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, (*format == 'X') ? "%X" : "%x", va_arg(vptr, int));
+            plen = snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, (*format == 'X') ? "%X" : "%x", va_arg(vptr, int));
             break;
 
         case 's': case 'S':
-            buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%s", va_arg(vptr, char *));
+            plen = snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%s", va_arg(vptr, char *));
             break;
         
         case 'f': case 'F':
         case 'g': case 'G':
-            buffer_pos += snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%f", va_arg(vptr, double));
+            plen = snprintf(output_buffer + buffer_pos, sizeof(output_buffer) - buffer_pos, "%f", va_arg(vptr, double));
             break;
 
         case 'c': case 'C':
@@ -204,38 +213,43 @@ void ros_printf(uint8_t attrib, const char *format, ...) {
         default:
             output_buffer[buffer_pos++] = *format;
         }
+
+        buffer_pos += plen;
+        printed += plen;
     }
 
     va_end(vptr);
     output_buffer[buffer_pos] = '\0';
-    ros_puts(attrib, output_buffer, false);
+    printed += ros_puts(attrib, USTR(output_buffer), false);
+    return printed;
 }
 
 void ros_apply_output_entrys(void) {
-#ifndef NDEBUG
-    apply_output_entrys();
-#endif
+    #ifndef NDEBUG
+        apply_output_entrys();
+    #endif
 }
 
-extern struct Input_Buffer ibuffer; /* from ros.c */
+/* from ros.c */
+extern struct Input_Buffer ibuffer;
 
-void ros_put_input_buffer(int disp, int overlap) {
+void ros_put_input_buffer(unsigned short disp, int overlap) {
     const v2 old_cursor = cursor;
-    const int odisp = disp;
+    const unsigned short odisp = disp;
 
     while (disp --)
         move_cursor_forward();
     
-    ros_puts(0x7, ibuffer.raw + odisp, false);
+    ros_puts(ATTRIBUTE_DEFAULT, USTR(ibuffer.raw + odisp), false);
 
     if (overlap > 0)
         while (overlap --)
-            ros_putchar(0x7, 0x20);
+            ros_putchar(ATTRIBUTE_DEFAULT, 0x20);
 
     cursor = old_cursor;
 }
 
-void draw_graphic_cursor(void) {
+void ros_put_graphic_cursor(void) {
     v2 target = cursor;
     
     if (sys_mode != SYSTEM_MODE_BUSY)
@@ -243,18 +257,18 @@ void draw_graphic_cursor(void) {
 
     v2 old_cursor = cursor;
     cursor = target;
-    ros_putchar(0xF, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
+    ros_putchar(ATTRIBUTE_UNDERLINE, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
     
     cursor = old_cursor;
 }
 
+void ros_put_prompt(void) { ros_puts(ATTRIBUTE_DEFAULT, USTR("$ "), false); }
+
 void clear_screen(void) {
     st7735_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    BIT_ON(PORTB, 1); /* Start data stream */
+    BIT_ON(PORTB, ST7735_DC_PIN);
     for (size_t i = 0; i < (size_t)((SCREEN_WIDTH + 1) * (SCREEN_HEIGHT + 1)) * 2; i++)
         spi_device_transfer_byte(0);
-    BIT_OFF(PORTB, 1); /* Stop data stream*/
+    BIT_OFF(PORTB, ST7735_DC_PIN);
 }
-
-void ros_prompt(void) { ros_puts(0x7, "$ ", false); }

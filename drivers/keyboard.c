@@ -1,7 +1,5 @@
 #include <inttypes.h>
-#include <stdio.h>
 #include <ctype.h>
-#include <string.h>
 
 #include <util/delay.h>
 #include <avr/pgmspace.h>
@@ -12,24 +10,30 @@
 #include "video.h"
 #include "keyboard.h"
 
-#define KEYBOARD_DELAY_MS       0
+#ifndef NDEBUG
+    /* Speed-up emulator */
+    #define KEYBOARD_DELAY_MS       0
+#else
+    #define KEYBOARD_DELAY_MS       100
+#endif
 
 static Keyboard_User_Callback keyboard_callback = NULL;
 
-/* This is lookup table for optimization, structured as pairs of characters */
-/* without SHIFT mode and with SHIFT mode. Pairs starting with \xff are indexes */
-/* for following functions to process non-printable characters. */
+/* Lookup table for optimization. */
+/* Structured as pairs of characters ( without and with SHIFT/CAPS mode ) */
+/* If first byte is '\xff', second byte is index of callback function */
 static const uint8_t char_decode_table[] PROGMEM =
 "\xff\x00" "\xff\x01" "mM,<.>/?" "\xff\x02\xff\x03" "  " "\xff\x04\xff\x05\xff\x06"
 "zZxXcCvVbBnNfFgGhHjJkKlL;:\'\"pP[{]}\\|" "\xff\x07" "aAsSdDwWeErRtTyYuUiIoO8*9(0)"
 "-_=+\xff\x08\xff\x09qQ`~1!2@3#4$5%6^7&";
 
-static bool shift_mode = false, caps_mode = false;
+static bool shift_mode = false, 
+            caps_mode  = false;
 
-static void __callback keyboard_nonprintable_shift(void) { shift_mode = true; }
+static void __callback keyboard_nonprintable_shift(void)    { shift_mode = true; }
 static void __callback keyboard_nonprintable_capslock(void) { caps_mode = !caps_mode; }
 
-static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[10] = {
+static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[0xA] = {
     keyboard_nonprintable_down_arrow,
     keyboard_nonprintable_right_arrow,
     keyboard_nonprintable_up_arrow,
@@ -56,44 +60,39 @@ int vk_as_char(enum Virtual_Key key) {
     return ret;
 }
 
-void keyboard_init(Keyboard_User_Callback callback) {
+void __driver keyboard_init(Keyboard_User_Callback callback) {
+    cli();
     keyboard_callback = callback;
 
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_CLK_PIN, PIN_DIRECTION_OUTPUT);
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_SHLD_PIN, PIN_DIRECTION_OUTPUT);
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_SO_PIN, PIN_DIRECTION_INPUT);
-    ROS_SET_PIN_DIRECTION(D, 2, PIN_DIRECTION_INPUT_PULLUP);
+    ROS_SET_PIN_DIRECTION(D, KEYBOARD_INTERRUPT_PIN, PIN_DIRECTION_INPUT_PULLUP);
 
     EIMSK |= BIT(INT0);
+    sei();
 }
 
 ISR(INT0_vect) {
     if (sys_mode == SYSTEM_MODE_BUSY)
         return;
 
-    BIT_OFF(PORTC, KEYBOARD_SHLD_PIN);
-    _delay_ms(KEYBOARD_DELAY_MS);
-    BIT_ON(PORTC, KEYBOARD_SHLD_PIN);
-    _delay_ms(KEYBOARD_DELAY_MS);
+    ROS_TOGGLE_PIN(C, KEYBOARD_SHLD_PIN, KEYBOARD_DELAY_MS);
 
     uint64_t keyboard_shot = 0;
-    for (int i = 0; i < 58; i++){
+    for (int i = 0; i < 58; i++) {
         keyboard_shot = (keyboard_shot << 1) | ((~BIT_EXT(PINC, KEYBOARD_SO_PIN)) & 1);
-
-        BIT_OFF(PORTC, KEYBOARD_CLK_PIN);
-        _delay_ms(KEYBOARD_DELAY_MS);
-        BIT_ON(PORTC, KEYBOARD_CLK_PIN);
-        _delay_ms(KEYBOARD_DELAY_MS);
+        ROS_TOGGLE_PIN(C, KEYBOARD_CLK_PIN, KEYBOARD_DELAY_MS);
     }
 
     int idx = 0;
-    for(; keyboard_shot; keyboard_shot >>= 1, idx ++)
+    for (; keyboard_shot; keyboard_shot >>= 1, idx ++)
         ;
 
     if (keyboard_callback != NULL)
         keyboard_callback(idx - 1);
 
     ros_apply_output_entrys();
-    draw_graphic_cursor();
+    ros_put_graphic_cursor();
     ros_apply_output_entrys();
 }

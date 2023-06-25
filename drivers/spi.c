@@ -1,5 +1,4 @@
 #include <stdbool.h>
-#include <avr/io.h>
 #include <avr/interrupt.h>
 
 #include "ros.h"
@@ -21,9 +20,9 @@
     #define SPI_SPR (uint8_t)(BIT(SPI2X) | BIT(SPR1))
 #endif
 
-volatile struct SPI_Device *SPI = NULL;
+volatile struct SPI_Device *SPI = (struct SPI_Device *)0x4C;
 
-void spi_device_init(void){
+void __driver spi_device_init(void) {
     cli();
     spi_device_deinit();
 
@@ -34,25 +33,26 @@ void spi_device_init(void){
     SPI->rSPCR = SPI_SPR;             /* MSB mode & SCK frequency */
     SPI->rSPCR |= BIT(MSTR);          /* Set master mode */
     SPI->rSPCR |= BIT(CPHA);          /* Leading Edge = Setup, Trailing Edge = Sample */
-
-    SPI->rSPSR &= 0;                  /* Status register */
-    
+    SPI->rSPSR = 0;                   /* Status register */
     SPI->rSPCR |= BIT(SPE);           /* Enable SPI */
     sei();
 }
 
-void spi_device_deinit(void){
-    BIT_OFF(SPI->rSPCR, SPE); /* Stop SPI */
+void __driver spi_device_deinit(void) {
+    BIT_OFF(SPI->rSPCR, SPE);
 }
 
-void spi_device_transfer_byte(const uint8_t ch){
-    SPI->rSPDR = (uint8_t)ch;
+void __driver spi_device_transfer_byte(const uint8_t ch) {
+    SPI->rSPDR = ch;
     
     while (!(SPI->rSPSR & BIT(SPIF)))
         ;
 }
 
-void spi_device_transfer_buffer(const uint8_t *buffer, size_t buffer_size){
+void __driver spi_device_transfer_buffer(const uint8_t *buffer, unsigned short buffer_size) {
+    if (!buffer_size)
+        return;
+
     while (buffer_size-- > 0)
         spi_device_transfer_byte(*buffer++);
 }

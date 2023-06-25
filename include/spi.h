@@ -2,8 +2,6 @@
 #define _SPI_H
 
 #include <assert.h>
-#include <avr/io.h>
-
 #include "ros.h"
 
 #define SPI_SCK_FREQUENCY_PRESCALER     4
@@ -21,14 +19,10 @@ static_assert( sizeof(struct SPI_Device) == 3 );
 
 extern volatile struct SPI_Device *SPI;
 
-static inline __attribute__((always_inline)) struct SPI_Device *spi_get(void){
-    return (struct SPI_Device *)0x4C;
-}
+void __driver spi_device_init(void);
+void __driver spi_device_deinit(void);
 
-__driver void spi_device_init(void);
-__driver void spi_device_deinit(void);
-
-__driver void spi_device_transfer_byte(const uint8_t ch);
-__driver void spi_device_transfer_buffer(const uint8_t *buffer, size_t buffer_size);
+void __driver spi_device_transfer_byte(const uint8_t ch);
+void __driver spi_device_transfer_buffer(const uint8_t *buffer, unsigned short buffer_size);
 
 #endif /* _SPI_H */
