@@ -2,6 +2,7 @@
 #define _VIDEO_H
 
 #include <inttypes.h>
+#include <stdarg.h>
 #include <assert.h>
 
 #include "ros.h"
@@ -39,6 +40,7 @@ struct PACKED Output_Entry {
 unsigned char ros_putchar(uint8_t, const unsigned char);
 int ros_puts(uint8_t, const unsigned char *, bool);
 int ros_puts_P(uint8_t, const unsigned char *, bool);
+int ros_vprintf(uint8_t, const char *, va_list);
 int ros_printf(uint8_t, const char *, ...) __attribute__((format(printf, 2, 3)));
 
 void ros_put_graphic_cursor(void);
@@ -46,7 +48,7 @@ void ros_put_input_buffer(unsigned short, int);
 void ros_put_prompt(void);
 
 void ros_apply_output_entrys(void);
-void clear_screen(void);
+void clear_screen(uint16_t);
 
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }

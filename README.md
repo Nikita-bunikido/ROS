@@ -77,3 +77,5 @@ Using Makefile:
   - Busy mode
   - Idle mode
 - ROS logo in boot process
+- Log system
+- Red screen of death

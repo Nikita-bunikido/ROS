@@ -120,6 +120,15 @@ int ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
     char ch;
 
     while ((ch = pgm_read_byte(str)) != '\0') {
+        if (ch == '\n') {
+            cursor.x = 0;
+            cursor.y ++;
+            printed ++;
+            str ++;
+            oe.pos = cursor;
+            continue;
+        }
+
         oe.data = ch;
         OUTPUT_ENTRY_PUSH(oe);
 
@@ -136,13 +145,10 @@ int ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
     return ++printed;
 }
 
-int ros_printf(uint8_t attrib, const char *format, ...) {
-    va_list vptr;
+int ros_vprintf(uint8_t attrib, const char *format, va_list vptr) {
     static char output_buffer[21];
     int printed;
     unsigned short buffer_pos;
-
-    va_start(vptr, format);
 
     /* No formats */
     if (strchr(format, '%') == NULL)
@@ -224,6 +230,13 @@ int ros_printf(uint8_t attrib, const char *format, ...) {
     return printed;
 }
 
+int ros_printf(uint8_t attrib, const char *format, ...) {
+    va_list vptr;
+    va_start(vptr, format);
+
+    return ros_vprintf(attrib, format, vptr);
+}
+
 void ros_apply_output_entrys(void) {
     #ifndef NDEBUG
         apply_output_entrys();
@@ -264,11 +277,15 @@ void ros_put_graphic_cursor(void) {
 
 void ros_put_prompt(void) { ros_puts(ATTRIBUTE_DEFAULT, USTR("$ "), false); }
 
-void clear_screen(void) {
+void clear_screen(uint16_t rgb565) {
+    cursor = (v2){ 0, 0 };
     st7735_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     BIT_ON(PORTB, ST7735_DC_PIN);
-    for (size_t i = 0; i < (size_t)((SCREEN_WIDTH + 1) * (SCREEN_HEIGHT + 1)) * 2; i++)
-        spi_device_transfer_byte(0);
+    for (unsigned y = 0; y < SCREEN_HEIGHT + 1; y++)
+    for (unsigned x = 0; x < SCREEN_WIDTH + 1; x++){
+        spi_device_transfer_byte(HI8(rgb565));
+        spi_device_transfer_byte(LO8(rgb565));
+    }
     BIT_OFF(PORTB, ST7735_DC_PIN);
 }

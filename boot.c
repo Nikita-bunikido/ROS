@@ -7,6 +7,7 @@
 
 #include "font.h"
 #include "video.h"
+#include "log.h"
 #include "ros.h"
 
 static const unsigned char preview[] PROGMEM = {
@@ -33,12 +34,18 @@ void ros_bootup(void) {
     keyboard_init(keyboard_callback);
 
     /* Screen init */
-    clear_screen();
+    clear_screen(0x0000);
     ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
     ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
+
+    /* Test log system */
+    ros_log(LOG_TYPE_INFO, "What a beautiful system.\n");
+    ros_log(LOG_TYPE_WARNING, "Maybe something wrong...\n");
+    ros_log(LOG_TYPE_ERROR, "Something is definitely wrong!\n");
+   
+    /* Cursor & prompt */
     ros_put_prompt();
     ros_put_graphic_cursor();
-
     ros_apply_output_entrys();
 
     /* Enter input mode */
