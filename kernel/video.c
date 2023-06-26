@@ -320,7 +320,7 @@ void ros_put_graphic_cursor(void) {
     v2 target = cursor;
 
     if (sys_mode != SYSTEM_MODE_BUSY)
-        target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + ibuffer.cursor / (SCREEN_WIDTH / LETTER_WIDTH)) };
+        target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + ibuffer.cursor / (SCREEN_WIDTH / LETTER_WIDTH - target.x)) };
 
     v2 old_cursor = cursor;
     cursor = target;
