@@ -6,9 +6,10 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#include "ros.h"
 #include "video.h"
 #include "keyboard.h"
+#include "log.h"
+#include "ros.h"
 
 #ifndef NDEBUG
     /* Speed-up emulator */
@@ -88,6 +89,10 @@ ISR(INT0_vect) {
     int idx = 0;
     for (; keyboard_shot; keyboard_shot >>= 1, idx ++)
         ;
+
+    /* 74hc165 fault */
+    if (idx >= 58)
+        HARD_ERROR(DRIVER_KEYBOARD_FAULT);
 
     if (keyboard_callback != NULL)
         keyboard_callback(idx - 1);

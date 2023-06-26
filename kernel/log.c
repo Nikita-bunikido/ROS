@@ -40,11 +40,13 @@ void ros_log(enum Log_Type type, const char *format, ...) {
     va_start(vptr, format);
 
     if (type == LOG_TYPE_CRITICAL) {
+        int code = va_arg(vptr, int);
         va_end(vptr);
-        enter_panic_mode(va_arg(vptr, int));
+        enter_panic_mode(code);
     }
  
     ros_puts(pgm_read_byte(&prefix_colors[type]), USTR(type_cstr), false);
     ros_putchar(ATTRIBUTE_DEFAULT, ' ');
     ros_vprintf(ATTRIBUTE_DEFAULT, format, vptr);  
+    ros_putchar(ATTRIBUTE_DEFAULT, '\n');
 }
