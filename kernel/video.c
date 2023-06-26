@@ -90,7 +90,37 @@ static v2 move_cursor_forward(void) {
     return cursor;
 }
 
+#define IS_SEQ(c)   (strchr("\b\r\t\n", (char)(c)) != NULL)
+
 unsigned char ros_putchar(uint8_t attrib, const unsigned char ch) {
+    switch (ch) {
+    case UCHR('\b'):
+        if (!cursor.x && (cursor.y > 0)) {
+            cursor.x = SCREEN_WIDTH / LETTER_WIDTH - 1;
+            cursor.y --;
+            return ch;
+        }
+        cursor.x --;
+        return ch;
+
+    case UCHR('\r'):
+        cursor.x = 0;
+        return ch;
+
+    case UCHR('\t'):
+        ros_putchar(attrib, ' ');
+        ros_putchar(attrib, ' ');
+        return ch;
+
+    case UCHR('\n'):
+        cursor.x = 0;
+        cursor.y ++;
+        return ch;
+
+    default:
+        break;
+    }
+
     OUTPUT_ENTRY_PUSH((struct Output_Entry){ .pos = cursor COMMA .attrib_raw = attrib COMMA .data = ch });
     move_cursor_forward();
     return ch;
@@ -100,10 +130,19 @@ int ros_puts(uint8_t attrib, const unsigned char *str, bool new_line) {
     struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib };
     int printed;
 
-    for(printed = 0; *str; str++, oe.pos = move_cursor_forward()){
+    for(printed = 0; *str; str++){
+        if (IS_SEQ(*str)) {
+            ros_apply_output_entrys();
+            ros_putchar(attrib, *str);
+            oe.pos = cursor;
+            printed ++;
+            continue;
+        }
+        
         oe.data = *str;
         printed ++;
         OUTPUT_ENTRY_PUSH(oe);
+        oe.pos = move_cursor_forward();
     }
 
     if (!new_line)
@@ -117,15 +156,14 @@ int ros_puts(uint8_t attrib, const unsigned char *str, bool new_line) {
 int ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
     struct Output_Entry oe = (struct Output_Entry){ .pos = cursor, .attrib_raw = attrib };
     int printed = 0;
-    char ch;
+    unsigned char ch;
 
     while ((ch = pgm_read_byte(str)) != '\0') {
-        if (ch == '\n') {
-            cursor.x = 0;
-            cursor.y ++;
+        if (IS_SEQ(ch)) {
+            ros_putchar(attrib, ch);
+            oe.pos = cursor;
             printed ++;
             str ++;
-            oe.pos = cursor;
             continue;
         }
 
@@ -152,7 +190,7 @@ int ros_vprintf(uint8_t attrib, const char *format, va_list vptr) {
 
     /* No formats */
     if (strchr(format, '%') == NULL)
-        return ros_puts(attrib, USTR(format), format[strlen(format) - 1] == '\n');
+        return ros_puts(attrib, USTR(format), false);
 
     for (buffer_pos = 0, printed = 0; *format && buffer_pos < sizeof(output_buffer); format++){
         bool seq = true;
@@ -278,6 +316,7 @@ void ros_put_graphic_cursor(void) {
 void ros_put_prompt(void) { ros_puts(ATTRIBUTE_DEFAULT, USTR("$ "), false); }
 
 void clear_screen(uint16_t rgb565) {
+    output_entry_stack_size = 0;
     cursor = (v2){ 0, 0 };
     st7735_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 

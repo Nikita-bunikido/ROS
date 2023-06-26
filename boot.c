@@ -39,9 +39,9 @@ void ros_bootup(void) {
     ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
 
     /* Test log system */
-    ros_log(LOG_TYPE_INFO, "What a beautiful system.\n");
-    ros_log(LOG_TYPE_WARNING, "Maybe something wrong...\n");
-    ros_log(LOG_TYPE_ERROR, "Something is definitely wrong!\n");
+    ros_log(LOG_TYPE_INFO, "What a beautiful system.");
+    ros_log(LOG_TYPE_WARNING, "Maybe something wrong...");
+    ros_log(LOG_TYPE_ERROR, "Something is definitely wrong!");
    
     /* Cursor & prompt */
     ros_put_prompt();

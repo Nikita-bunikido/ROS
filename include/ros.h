@@ -19,6 +19,7 @@
 #define AR8(w)              HI8(w), LO8(w)
 
 #define USTR(s)             ((unsigned char *)(s))
+#define UCHR(c)             ((unsigned char)(c))
 #define COMMA               ,
 
 #define ARR_SIZE(a)         (sizeof(a) / sizeof(__typeof__(*a)))
