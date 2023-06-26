@@ -47,7 +47,8 @@ void ros_bootup(void) {
     ros_put_prompt();
     ros_put_graphic_cursor();
     ros_apply_output_entrys();
-
+    ros_init_graphic_timer();
+    
     /* Enter input mode */
     sei();
     sys_mode = SYSTEM_MODE_INPUT;

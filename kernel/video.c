@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
 #include "spi.h"
@@ -15,6 +16,20 @@
 #include "font.h"
 #include "video.h"
 #include "ros.h"
+
+#if TIMER0_PRESCALER == -1
+    #define CS_BITS (uint8_t)0
+#elif TIMER0_PRESCALER == 0
+    #define CS_BITS (uint8_t)(BIT(CS00))
+#elif TIMER0_PRESCALER == 8
+    #define CS_BITS (uint8_t)(BIT(CS01))
+#elif TIMER0_PRESCALER == 64
+    #define CS_BITS (uint8_t)(BIT(CS01) | BIT(CS00))
+#elif TIMER0_PRESCALER == 256
+    #define CS_BITS (uint8_t)(BIT(CS02))
+#elif TIMER0_PRESCALER == 1024
+    #define CS_BITS (uint8_t)(BIT(CS02) | BIT(CS00))
+#endif
 
 #define OUTPUT_ENTRY_STACK_CAP      20
 
@@ -30,6 +45,7 @@ do {                                                            \
 #define OUTPUT_ENTRY_POP(e)                                     \
     (e) = output_entry_stack[--output_entry_stack_size]         \
 
+static volatile bool flash_flag = false;
 static volatile v2 cursor = { 0, 0 };
 
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
@@ -302,18 +318,28 @@ void ros_put_input_buffer(unsigned short disp, int overlap) {
 
 void ros_put_graphic_cursor(void) {
     v2 target = cursor;
-    
+
     if (sys_mode != SYSTEM_MODE_BUSY)
         target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + ibuffer.cursor / (SCREEN_WIDTH / LETTER_WIDTH)) };
 
     v2 old_cursor = cursor;
     cursor = target;
-    ros_putchar(ATTRIBUTE_UNDERLINE, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
+    ros_putchar(flash_flag ? ATTRIBUTE_UNDERLINE : ATTRIBUTE_DEFAULT, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
     
     cursor = old_cursor;
 }
 
 void ros_put_prompt(void) { ros_puts(ATTRIBUTE_DEFAULT, USTR("$ "), false); }
+
+void ros_init_graphic_timer(void) {
+    cli();
+    TCCR0A |= BIT(WGM01);       /* CTC timer mode */
+    TCCR0B |= CS_BITS;          /* Prescaler */
+    OCR0A = 156;                /* Compare value */
+    TIMSK0 |= (1 << OCIE0A);    /* Compare with OCR0A */
+
+    sei();
+}
 
 void clear_screen(uint16_t rgb565) {
     output_entry_stack_size = 0;
@@ -327,4 +353,13 @@ void clear_screen(uint16_t rgb565) {
         spi_device_transfer_byte(LO8(rgb565));
     }
     BIT_OFF(PORTB, ST7735_DC_PIN);
+}
+
+ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
+    /* Triggerred every 0.01 second */
+    flash_flag = !flash_flag;
+
+    ros_apply_output_entrys();
+    ros_put_graphic_cursor();
+    ros_apply_output_entrys();
 }

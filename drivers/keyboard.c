@@ -7,6 +7,7 @@
 #include <avr/interrupt.h>
 
 #include "video.h"
+#include "spi.h"
 #include "keyboard.h"
 #include "log.h"
 #include "ros.h"
@@ -75,6 +76,9 @@ void __driver keyboard_init(Keyboard_User_Callback callback) {
 }
 
 ISR(INT0_vect) {
+    while (!(SPI->rSPSR & BIT(SPIF))) /* Wait for spi transaction to complete */
+        ;
+
     if (sys_mode == SYSTEM_MODE_BUSY)
         return;
 
@@ -91,13 +95,9 @@ ISR(INT0_vect) {
         ;
 
     /* 74hc165 fault */
-    if (idx >= 58)
+    if ((idx - 1) >= 58)
         HARD_ERROR(DRIVER_KEYBOARD_FAULT);
 
     if (keyboard_callback != NULL)
         keyboard_callback(idx - 1);
-
-    ros_apply_output_entrys();
-    ros_put_graphic_cursor();
-    ros_apply_output_entrys();
 }

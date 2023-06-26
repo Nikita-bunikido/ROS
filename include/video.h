@@ -7,6 +7,8 @@
 
 #include "ros.h"
 
+#define TIMER0_PRESCALER    1024
+
 typedef struct {
     uint8_t x, y;
 } v2;
@@ -49,6 +51,8 @@ void ros_put_prompt(void);
 
 void ros_apply_output_entrys(void);
 void clear_screen(uint16_t);
+
+void ros_init_graphic_timer(void);
 
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }
