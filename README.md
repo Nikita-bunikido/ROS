@@ -79,3 +79,5 @@ Using Makefile:
 - ROS logo in boot process
 - Log system
 - Red screen of death
+- Graphic timer
+- Blinking cursor
