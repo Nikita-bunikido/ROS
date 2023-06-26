@@ -28,12 +28,12 @@ void ros_bootup(void) {
     /* from ros.c */
     extern void keyboard_callback(enum Virtual_Key);
 
-    /* Drivers init */
+    /* Drivers */
     spi_device_init();
     st7735_init();
     keyboard_init(keyboard_callback);
 
-    /* Screen init */
+    /* Screen */
     clear_screen(0x0000);
     ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
     ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
@@ -45,11 +45,11 @@ void ros_bootup(void) {
    
     /* Cursor & prompt */
     ros_put_prompt();
-    ros_put_graphic_cursor();
     ros_apply_output_entrys();
-    ros_init_graphic_timer();
+    ros_graphic_timer_init();
     
     /* Enter input mode */
+    enable_cursor();
     sei();
     sys_mode = SYSTEM_MODE_INPUT;
 }

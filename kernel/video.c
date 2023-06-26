@@ -45,6 +45,12 @@ do {                                                            \
 #define OUTPUT_ENTRY_POP(e)                                     \
     (e) = output_entry_stack[--output_entry_stack_size]         \
 
+volatile struct Graphic_Cursor graphic_cursor = {
+    .attrib_low = ATTRIBUTE_DEFAULT,
+    .attrib_high = ATTRIBUTE_UNDERLINE,
+    .visible = false
+};
+
 static volatile bool flash_flag = false;
 static volatile v2 cursor = { 0, 0 };
 
@@ -79,6 +85,7 @@ static void apply_output_entrys(void) {
     static uint8_t letter_buffer[LETTER_WIDTH * LETTER_HEIGHT * 2];
     struct Output_Entry entry;
     
+    cli();
     while (output_entry_stack_size > 0){
         OUTPUT_ENTRY_POP(entry);
         v2 cur_pos = { entry.pos.x * LETTER_WIDTH, entry.pos.y * LETTER_HEIGHT };
@@ -93,6 +100,8 @@ static void apply_output_entrys(void) {
         spi_device_transfer_buffer(letter_buffer, sizeof(letter_buffer));
         BIT_OFF(PORTB, ST7735_DC_PIN);
     }
+
+    sei();
 }
 
 static v2 move_cursor_forward(void) {
@@ -316,7 +325,7 @@ void ros_put_input_buffer(unsigned short disp, int overlap) {
     cursor = old_cursor;
 }
 
-void ros_put_graphic_cursor(void) {
+static void graphic_cursor_put(void) {
     v2 target = cursor;
 
     if (sys_mode != SYSTEM_MODE_BUSY)
@@ -324,14 +333,14 @@ void ros_put_graphic_cursor(void) {
 
     v2 old_cursor = cursor;
     cursor = target;
-    ros_putchar(flash_flag ? ATTRIBUTE_UNDERLINE : ATTRIBUTE_DEFAULT, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
+    ros_putchar(flash_flag ? graphic_cursor.attrib_high : graphic_cursor.attrib_low, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
     
     cursor = old_cursor;
 }
 
 void ros_put_prompt(void) { ros_puts(ATTRIBUTE_DEFAULT, USTR("$ "), false); }
 
-void ros_init_graphic_timer(void) {
+void ros_graphic_timer_init(void) {
     cli();
     TCCR0A |= BIT(WGM01);       /* CTC timer mode */
     TCCR0B |= CS_BITS;          /* Prescaler */
@@ -360,6 +369,10 @@ ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
     flash_flag = !flash_flag;
 
     ros_apply_output_entrys();
-    ros_put_graphic_cursor();
+
+    if (!(graphic_cursor.visible))
+        return;
+
+    graphic_cursor_put();
     ros_apply_output_entrys();
 }

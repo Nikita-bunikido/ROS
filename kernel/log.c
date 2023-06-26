@@ -24,11 +24,17 @@ static const unsigned char panic_message[] PROGMEM =
 
 static void __attribute__((noreturn)) enter_panic_mode(const int code) {
     sys_mode = SYSTEM_MODE_IDLE;
+ 
     clear_screen(0xf800);
     ros_printf(0x17, "**** STOP CODE: <%X>\n", code);
     ros_puts_P(0x17, panic_message, false);
-    ros_puts_P(0x1F, panic_link, true);
-    ros_apply_output_entrys();
+    ros_puts_P(0x1F, panic_link, false);
+
+    graphic_cursor = (struct Graphic_Cursor){
+        .attrib_low = 0x17,
+        .attrib_high = 0x1F,
+        .visible = true
+    };
 
     for(;;);
 }
@@ -38,13 +44,14 @@ void ros_log(enum Log_Type type, const char *format, ...) {
     va_list vptr;
 
     va_start(vptr, format);
+    disable_cursor();
 
     if (type == LOG_TYPE_CRITICAL) {
         int code = va_arg(vptr, int);
         va_end(vptr);
         enter_panic_mode(code);
     }
- 
+
     ros_puts(pgm_read_byte(&prefix_colors[type]), USTR(type_cstr), false);
     ros_putchar(ATTRIBUTE_DEFAULT, ' ');
     ros_vprintf(ATTRIBUTE_DEFAULT, format, vptr);  
