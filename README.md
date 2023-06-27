@@ -2,6 +2,7 @@
 
 ![languages count](https://img.shields.io/github/languages/count/Nikita-bunikido/ROS)
 ![lines of code](https://img.shields.io/tokei/lines/github/Nikita-bunikido/ROS)
+![license](https://img.shields.io/github/license/Nikita-bunikido/ROS)
 ![stars count](https://img.shields.io/github/stars/Nikita-bunikido/ROS?style=social)
 ![forks count](https://img.shields.io/github/forks/Nikita-bunikido/ROS?style=social)
 ![yt subs count](https://img.shields.io/youtube/channel/subscribers/UCW3RoBYtEBnrX_dOI3ELlxA?style=social)
