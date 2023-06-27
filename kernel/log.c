@@ -44,7 +44,6 @@ void ros_log(enum Log_Type type, const char *format, ...) {
     va_list vptr;
 
     va_start(vptr, format);
-    disable_cursor();
 
     if (type == LOG_TYPE_CRITICAL) {
         int code = va_arg(vptr, int);

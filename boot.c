@@ -35,6 +35,7 @@ void ros_bootup(void) {
 
     /* Screen */
     clear_screen(0x0000);
+    disable_cursor();
     ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
     ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
 

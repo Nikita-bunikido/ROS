@@ -82,7 +82,8 @@ void __callback keyboard_nonprintable_backspace(void){
 }
 
 void __callback keyboard_nonprintable_tab(void){
-    strcpy(ibuffer.raw + ibuffer.cursor, "  ");
+    memmove(ibuffer.raw + ibuffer.cursor + 2, ibuffer.raw + ibuffer.cursor, INPUT_BUFFER_CAP - ibuffer.cursor - 2);
+    memcpy(ibuffer.raw + ibuffer.cursor, "  ", 2);
     ibuffer.cursor += 2;
 
     ros_put_input_buffer(ibuffer.cursor - 2, 0);
