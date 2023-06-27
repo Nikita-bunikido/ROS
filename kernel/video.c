@@ -364,6 +364,26 @@ void clear_screen(uint16_t rgb565) {
     BIT_OFF(PORTB, ST7735_DC_PIN);
 }
 
+
+void enable_cursor(void)
+{
+    graphic_cursor.visible = true;
+}
+
+void disable_cursor(void)
+{
+    graphic_cursor.visible = false;
+
+    if ((sys_mode != SYSTEM_MODE_INPUT) && (sys_mode != SYSTEM_MODE_IDLE))
+        return;
+
+    if (sys_mode == SYSTEM_MODE_INPUT)
+        for (unsigned short i = 0; i < ibuffer.cursor; i++)
+            move_cursor_forward();
+
+    ros_putchar(ATTRIBUTE_DEFAULT, ' ');
+}
+
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
     /* Triggerred every 0.01 second */
     flash_flag = !flash_flag;

@@ -59,13 +59,10 @@ void clear_screen(uint16_t);
 
 void ros_graphic_timer_init(void);
 
+void enable_cursor(void);
+void disable_cursor(void);
+
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }
-
-inline void enable_cursor(void)
-{ graphic_cursor.visible = true; }
-
-inline void disable_cursor(void)
-{ graphic_cursor.visible = false; }
 
 #endif /* _VIDEO_H */

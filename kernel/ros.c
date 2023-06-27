@@ -53,10 +53,6 @@ void keyboard_callback(enum Virtual_Key vk){
 }
 
 /* Keyboard callbacks are only active in SYSTEM_MODE_INPUT */
-void __callback keyboard_nonprintable_down_arrow(void){
-    ;
-}
-
 void __callback keyboard_nonprintable_right_arrow(void){
     ibuffer.cursor += ((ibuffer.cursor < (INPUT_BUFFER_CAP - 1)) && (ibuffer.raw[ibuffer.cursor] != '\0'));
     ros_put_input_buffer(ibuffer.cursor - 1, 0);
@@ -67,15 +63,12 @@ void __callback keyboard_nonprintable_left_arrow(void){
     ros_put_input_buffer(ibuffer.cursor, 1);
 }
 
-void __callback keyboard_nonprintable_up_arrow(void){
-    ;
-}
-
-void __callback keyboard_nonprintable_control(void){
-    ;
-}
+void __callback keyboard_nonprintable_down_arrow(void){ __asm__ __volatile__ ("nop"); }
+void __callback keyboard_nonprintable_up_arrow(void){ __asm__ __volatile__ ("nop"); }
+void __callback keyboard_nonprintable_control(void) { __asm__ __volatile__ ("nop"); }
 
 void __callback keyboard_nonprintable_enter(void){
+    disable_cursor();
     sys_mode = SYSTEM_MODE_BUSY;
 }
 
