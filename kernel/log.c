@@ -23,7 +23,7 @@ static const unsigned char panic_message[] PROGMEM =
     "https://github.com/Nikita-bunikido/ROS";
 
 static void __attribute__((noreturn)) enter_panic_mode(const int code) {
-    sys_mode = SYSTEM_MODE_IDLE;
+    sys_mode = SYSTEM_MODE_BUSY;
  
     clear_screen(0xf800);
     ros_printf(0x17, "**** STOP CODE: <%X>\n", code);
