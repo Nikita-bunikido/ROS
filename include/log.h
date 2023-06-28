@@ -4,8 +4,6 @@
 #include "ros.h"
 
 #define LOG_TYPES_NUMBER    (LOG_TYPE_CRITICAL + 1)
-#define LOG_TYPE_CSTR       (const char*[LOG_TYPES_NUMBER]){"INFO", "FAIL", "WARN", ""}
-
 #define HARD_ERROR(code)    ros_log(LOG_TYPE_CRITICAL, NULL, (code))
 
 enum Critical_Code {

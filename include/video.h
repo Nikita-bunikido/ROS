@@ -9,6 +9,7 @@
 #include "ros.h"
 
 #define TIMER0_PRESCALER    1024
+#define VGA_SWITCH(a)               (a) = (((a) & 0x88) | (((a) & 0x7) << 0x4) | (((a) & 0x70) >> 4))
 
 typedef struct {
     uint8_t x, y;
@@ -40,6 +41,13 @@ struct PACKED Output_Entry {
     unsigned char data;
 };
 
+typedef void (*__callback Flash_Routine)(bool flash_flag);
+
+struct PACKED Flash_Thread {
+    Flash_Routine handle;
+    v2 pos;
+};
+
 extern volatile struct PACKED Graphic_Cursor {
     uint8_t attrib_low, attrib_high;
     bool visible;
@@ -50,6 +58,7 @@ int ros_puts(uint8_t, const unsigned char *, bool);
 int ros_puts_P(uint8_t, const unsigned char *, bool);
 int ros_vprintf(uint8_t, const char *, va_list);
 int ros_printf(uint8_t, const char *, ...) __attribute__((format(printf, 2, 3)));
+void ros_flash(Flash_Routine);
 
 void ros_put_input_buffer(unsigned short, int);
 void ros_put_prompt(void);

@@ -40,7 +40,12 @@ void ros_set_pin_direction(volatile uint8_t *port, volatile uint8_t *ddr, int pi
 
 struct Input_Buffer ibuffer = { 0 };
 
-void keyboard_callback(enum Virtual_Key vk){
+void __callback keyboard_idle(enum Virtual_Key vk){
+    (void) vk;
+    ;
+}
+
+void __callback keyboard_input(enum Virtual_Key vk){
     int ch = vk_as_char(vk);
 
     if ((ch < 0) || (ibuffer.cursor >= INPUT_BUFFER_CAP - 1))

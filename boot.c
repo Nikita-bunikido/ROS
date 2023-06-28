@@ -26,12 +26,12 @@ static const unsigned char preview[] PROGMEM = {
 
 void ros_bootup(void) {
     /* from ros.c */
-    extern void keyboard_callback(enum Virtual_Key);
+    extern void keyboard_input(enum Virtual_Key), keyboard_idle(enum Virtual_Key);
 
     /* Drivers */
     spi_device_init();
     st7735_init();
-    keyboard_init(keyboard_callback);
+    keyboard_init(keyboard_input, keyboard_idle);
 
     /* Screen */
     clear_screen(0x0000);
@@ -40,14 +40,14 @@ void ros_bootup(void) {
     ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
 
     /* Test log system */
+    ros_graphic_timer_init();
     ros_log(LOG_TYPE_INFO, "What a beautiful system.");
     ros_log(LOG_TYPE_WARNING, "Maybe something wrong...");
     ros_log(LOG_TYPE_ERROR, "Something is definitely wrong!");
-   
+
     /* Cursor & prompt */
     ros_put_prompt();
     ros_apply_output_entrys();
-    ros_graphic_timer_init();
     
     /* Enter input mode */
     enable_cursor();

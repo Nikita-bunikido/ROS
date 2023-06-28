@@ -32,6 +32,7 @@
 #endif
 
 #define OUTPUT_ENTRY_STACK_CAP      20
+#define FLASH_THREAD_STACK_CAP      10
 
 #define OUTPUT_ENTRY_PUSH(e)                                    \
 do {                                                            \
@@ -51,11 +52,14 @@ volatile struct Graphic_Cursor graphic_cursor = {
     .visible = false
 };
 
-static volatile bool flash_flag = false;
+static volatile uint8_t flash_time = 0;
 static volatile v2 cursor = { 0, 0 };
 
 static struct Output_Entry output_entry_stack[OUTPUT_ENTRY_STACK_CAP] = { 0 };
 static unsigned short output_entry_stack_size = 0;
+
+static struct Flash_Thread flash_thread_stack[FLASH_THREAD_STACK_CAP] = { 0 };
+static unsigned short flash_thread_stack_size = 0;
 
 static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const uint8_t raw) {
     uint16_t result = 0;
@@ -104,6 +108,29 @@ static void apply_output_entrys(void) {
     sei();
 }
 
+static void update_flash_handles(bool flag) {
+    const v2 old_cursor = cursor;
+    struct Flash_Thread cur;
+
+    for (unsigned short i = 0; i < flash_thread_stack_size; ++i) {
+        cur = flash_thread_stack[i];
+        cursor = cur.pos;
+        (cur.handle)(flag);
+    }
+
+    cursor = old_cursor;
+}
+
+static void flash_thread_push(Flash_Routine routine) {
+    if (flash_thread_stack_size > FLASH_THREAD_STACK_CAP - 1)
+        return;
+    
+    flash_thread_stack[flash_thread_stack_size ++] = (struct Flash_Thread) {
+        .handle = routine,
+        .pos = cursor
+    };
+}
+
 static v2 move_cursor_forward(void) {
     if (cursor.x + 1 >= SCREEN_WIDTH / LETTER_WIDTH){
         cursor.x = 0;
@@ -114,6 +141,8 @@ static v2 move_cursor_forward(void) {
     cursor.x ++;
     return cursor;
 }
+
+void ros_flash(Flash_Routine routine) { flash_thread_push(routine); }
 
 #define IS_SEQ(c)   (strchr("\b\r\t\n", (char)(c)) != NULL)
 
@@ -333,7 +362,7 @@ static void graphic_cursor_put(void) {
 
     v2 old_cursor = cursor;
     cursor = target;
-    ros_putchar(flash_flag ? graphic_cursor.attrib_high : graphic_cursor.attrib_low, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
+    ros_putchar((flash_time % 2) ? graphic_cursor.attrib_high : graphic_cursor.attrib_low, (sys_mode == SYSTEM_MODE_INPUT) ? (ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ') : ' ');
     
     cursor = old_cursor;
 }
@@ -386,13 +415,16 @@ void disable_cursor(void)
 
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
     /* Triggerred every 0.01 second */
-    flash_flag = !flash_flag;
+    flash_time += 1;
 
-    ros_apply_output_entrys();
+    apply_output_entrys();
+
+    if (flash_time % 3 == 0)
+        update_flash_handles(flash_time % 2);
 
     if (!(graphic_cursor.visible))
         return;
 
     graphic_cursor_put();
-    ros_apply_output_entrys();
+    apply_output_entrys();
 }
