@@ -19,7 +19,8 @@
     #define KEYBOARD_DELAY_MS       100
 #endif
 
-static Keyboard_User_Callback keyboard_callback = NULL;
+static volatile Keyboard_User_Callback input_keyboard_callback = NULL,
+                                       idle_keyboard_callback = NULL;
 
 /* Lookup table for optimization. */
 /* Structured as pairs of characters ( without and with SHIFT/CAPS mode ) */
@@ -62,9 +63,10 @@ int vk_as_char(enum Virtual_Key key) {
     return ret;
 }
 
-void __driver keyboard_init(Keyboard_User_Callback callback) {
+void __driver keyboard_init(Keyboard_User_Callback input_callback, Keyboard_User_Callback idle_callback) {
     cli();
-    keyboard_callback = callback;
+    input_keyboard_callback = input_callback;
+    idle_keyboard_callback  = idle_callback;
 
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_CLK_PIN, PIN_DIRECTION_OUTPUT);
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_SHLD_PIN, PIN_DIRECTION_OUTPUT);
@@ -98,6 +100,14 @@ ISR(INT0_vect) {
     if ((idx - 1) >= 58)
         HARD_ERROR(DRIVER_KEYBOARD_FAULT);
 
-    if (keyboard_callback != NULL)
-        keyboard_callback(idx - 1);
+    switch (sys_mode) {
+    case SYSTEM_MODE_INPUT:
+        if (input_keyboard_callback) input_keyboard_callback(idx - 1);
+        break;
+
+    case SYSTEM_MODE_IDLE:
+        if (idle_keyboard_callback) idle_keyboard_callback(idx - 1);
+        sys_mode = SYSTEM_MODE_BUSY;
+        break;
+    }
 }
