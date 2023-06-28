@@ -47,10 +47,25 @@ Using Makefile:
 
 ### TODO
 
+- Running strings
+- Screen clear question
+- CHIP8 assembler ( for _X86_ )
+- CHIP-8 emulator
+- Programs executing from FLASH memory
+- Working with RAM
 - Command shell
-- Interacting with RAM
-- [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) programs loading & executing
-- Custom filesystem/ROM support
+  - System commands
+  - Unknown command detection
+  - Executing batch files
+  - Executing [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) programs
+  - File format detection for opening in correct program
+    - **.rex** ( _ROS executable_ ) -> program loader
+    - **.raw** ( _Raw binary_ ) -> hex editor
+    - **.txt** ( _Text document_ ) -> text editor
+    - **.rtm** ( _ROS text markup document_ ) -> ros text markup
+    - **.rch8** ( _ROS-CHIP8 source file_ ) -> text editor
+- Working with ROM
+- Custom filesystem
 - Documented API
 - Builtin applications:
   - Physical memory editor
@@ -58,7 +73,6 @@ Using Makefile:
   - Text editor
   - CHIP8 assembler
   - Basic interpreter
-- Custom file formats support
 - ...
 
 ### CHANGELOG
