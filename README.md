@@ -82,3 +82,5 @@ Using Makefile:
 - Red screen of death
 - Graphic timer
 - Blinking cursor
+- Cursor visibility control
+- Flashing threads
