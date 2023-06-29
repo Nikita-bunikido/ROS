@@ -1,5 +1,6 @@
 #include <stdarg.h>
 
+#include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
 #include "video.h"
@@ -50,6 +51,7 @@ static void __attribute__((noreturn)) enter_panic_mode(const int code) {
         .visible = true
     };
 
+    sei();
     for(;;);
 }
 
@@ -58,6 +60,7 @@ void ros_log(enum Log_Type type, const char *format, ...) {
     va_start(vptr, format);
 
     if (type == LOG_TYPE_CRITICAL) {
+        cli();
         int code = va_arg(vptr, int);
         va_end(vptr);
         enter_panic_mode(code);

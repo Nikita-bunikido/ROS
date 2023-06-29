@@ -8,6 +8,7 @@
 
 enum Critical_Code {
     DRIVER_KEYBOARD_FAULT = 0x00,
+    VIDEO_MEMORY_FAULT    = 0x10,
 };
 
 enum Log_Type {
