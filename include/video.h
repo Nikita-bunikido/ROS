@@ -53,6 +53,8 @@ extern volatile struct PACKED Graphic_Cursor {
     bool visible;
 } graphic_cursor;
 
+void ros_graphic_timer_init(void);
+
 unsigned char ros_putchar(uint8_t, const unsigned char);
 int ros_puts(uint8_t, const unsigned char *, bool);
 int ros_puts_P(uint8_t, const unsigned char *, bool);
@@ -65,8 +67,6 @@ void ros_put_prompt(void);
 
 void ros_apply_output_entrys(void);
 void clear_screen(uint16_t);
-
-void ros_graphic_timer_init(void);
 
 void enable_cursor(void);
 void disable_cursor(void);

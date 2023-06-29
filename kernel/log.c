@@ -37,7 +37,8 @@ static Flash_Routine flash_callbacks[LOG_TYPES_NUMBER - 1] = {
 
 static void __attribute__((noreturn)) enter_panic_mode(const int code) {
     sys_mode = SYSTEM_MODE_BUSY;
- 
+
+    disable_cursor();
     clear_screen(0xf800);
     ros_printf(0x17, "**** STOP CODE: <%X>\n", code);
     ros_puts_P(0x17, panic_message, false);

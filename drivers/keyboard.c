@@ -19,8 +19,7 @@
     #define KEYBOARD_DELAY_MS       100
 #endif
 
-static volatile Keyboard_User_Callback input_keyboard_callback = NULL,
-                                       idle_keyboard_callback = NULL;
+static volatile Keyboard_User_Callback input_keyboard_callback = NULL;
 
 /* Lookup table for optimization. */
 /* Structured as pairs of characters ( without and with SHIFT/CAPS mode ) */
@@ -49,6 +48,8 @@ static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[0xA]
     keyboard_nonprintable_tab,
 };
 
+volatile enum Virtual_Key idle_key = INVALID_KEY;
+
 int vk_as_char(enum Virtual_Key key) {
     uint16_t kdata = pgm_read_word(&char_decode_table[key * 2]);
 
@@ -63,10 +64,9 @@ int vk_as_char(enum Virtual_Key key) {
     return ret;
 }
 
-void __driver keyboard_init(Keyboard_User_Callback input_callback, Keyboard_User_Callback idle_callback) {
+void __driver keyboard_init(Keyboard_User_Callback input_callback) {
     cli();
     input_keyboard_callback = input_callback;
-    idle_keyboard_callback  = idle_callback;
 
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_CLK_PIN, PIN_DIRECTION_OUTPUT);
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_SHLD_PIN, PIN_DIRECTION_OUTPUT);
@@ -106,7 +106,7 @@ ISR(INT0_vect) {
         break;
 
     case SYSTEM_MODE_IDLE:
-        if (idle_keyboard_callback) idle_keyboard_callback(idx - 1);
+        idle_key = (enum Virtual_Key)(idx - 1);
         sys_mode = SYSTEM_MODE_BUSY;
         break;
     }

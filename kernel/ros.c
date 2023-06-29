@@ -13,6 +13,7 @@
 
 #include "video.h"
 #include "keyboard.h"
+#include "log.h"
 #include "ros.h"
 
 enum System_Mode sys_mode = SYSTEM_MODE_BUSY;
@@ -40,9 +41,14 @@ void ros_set_pin_direction(volatile uint8_t *port, volatile uint8_t *ddr, int pi
 
 struct Input_Buffer ibuffer = { 0 };
 
-void __callback keyboard_idle(enum Virtual_Key vk){
-    (void) vk;
-    ;
+static void return_to_input_mode(void) {
+    sys_mode = SYSTEM_MODE_INPUT;
+
+    memset(ibuffer.raw, 0, INPUT_BUFFER_CAP);
+    ibuffer.cursor = 0;
+
+    ros_put_prompt();
+    enable_cursor();
 }
 
 void __callback keyboard_input(enum Virtual_Key vk){
@@ -75,6 +81,12 @@ void __callback keyboard_nonprintable_control(void) { __asm__ __volatile__ ("nop
 void __callback keyboard_nonprintable_enter(void){
     disable_cursor();
     sys_mode = SYSTEM_MODE_BUSY;
+    ros_putchar(ATTRIBUTE_DEFAULT, '\n');
+
+    for (int i = 0; i < 15; i++)
+        ros_log(LOG_TYPE_INFO, "Test");
+    
+    return_to_input_mode();
 }
 
 void __callback keyboard_nonprintable_backspace(void){

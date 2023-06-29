@@ -8,6 +8,8 @@
 #define KEYBOARD_SO_PIN         2
 #define KEYBOARD_INTERRUPT_PIN  2
 
+#define INVALID_KEY             (enum Virtual_Key)(0xFF)
+
 #define KEY(sym,code)   VK_##sym = code,
 enum Virtual_Key {
     #include "keyboard.def"
@@ -18,6 +20,8 @@ typedef void (*__callback Keyboard_Nonprintable_Callback)(void);
 typedef void (*__callback Keyboard_User_Callback)(enum Virtual_Key);
 
 int vk_as_char(enum Virtual_Key key);
-void __driver keyboard_init(Keyboard_User_Callback, Keyboard_User_Callback);
+void __driver keyboard_init(Keyboard_User_Callback);
+
+extern volatile enum Virtual_Key idle_key;
 
 #endif /* _KEYBOARD_H */
