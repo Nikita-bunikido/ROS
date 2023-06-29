@@ -14,7 +14,9 @@
 
 #define _INCLUDE_FONT
 #include "font.h"
+#include "keyboard.h"
 #include "video.h"
+#include "log.h"
 #include "ros.h"
 
 #if TIMER0_PRESCALER == -1
@@ -109,8 +111,8 @@ static void apply_output_entrys(void) {
 }
 
 static void update_flash_handles(bool flag) {
-    const v2 old_cursor = cursor;
     struct Flash_Thread cur;
+    const v2 old_cursor = cursor;
 
     for (unsigned short i = 0; i < flash_thread_stack_size; ++i) {
         cur = flash_thread_stack[i];
@@ -131,7 +133,28 @@ static void flash_thread_push(Flash_Routine routine) {
     };
 }
 
+static void refresh_screen(void) {
+    cursor = (v2){ 0, 0 };
+    disable_cursor();
+    ros_log(LOG_TYPE_INFO, "Press any key to refresh. . .");
+    sys_mode = SYSTEM_MODE_IDLE;
+    enable_cursor();
+
+    /* Wait for key */
+    while (idle_key == INVALID_KEY)
+        ;
+
+    disable_cursor();
+    clear_screen(0x0000);
+    idle_key = INVALID_KEY;
+}
+
 static v2 move_cursor_forward(void) {
+    if ((sys_mode == SYSTEM_MODE_BUSY) && (cursor.x == (SCREEN_WIDTH / LETTER_WIDTH - 1)) && (cursor.y == (SCREEN_HEIGHT / LETTER_HEIGHT))) {
+        refresh_screen();
+        return cursor;
+    }
+
     if (cursor.x + 1 >= SCREEN_WIDTH / LETTER_WIDTH){
         cursor.x = 0;
         cursor.y ++;
@@ -168,7 +191,12 @@ unsigned char ros_putchar(uint8_t attrib, const unsigned char ch) {
 
     case UCHR('\n'):
         cursor.x = 0;
-        cursor.y ++;
+
+        if (cursor.y == (SCREEN_HEIGHT / LETTER_HEIGHT))
+            refresh_screen();
+        else
+            cursor.y ++;
+
         return ch;
 
     default:
@@ -202,8 +230,7 @@ int ros_puts(uint8_t attrib, const unsigned char *str, bool new_line) {
     if (!new_line)
         return printed;
 
-    cursor.x = 0;
-    cursor.y ++;
+    ros_putchar(attrib, '\n');
     return ++printed;
 }
 
@@ -232,8 +259,7 @@ int ros_puts_P(uint8_t attrib, const unsigned char *str, bool new_line) {
     if (!new_line)
         return printed;
 
-    cursor.x = 0;
-    cursor.y ++;
+    ros_putchar(attrib, '\n');
     return ++printed;
 }
 
@@ -357,8 +383,8 @@ void ros_put_input_buffer(unsigned short disp, int overlap) {
 static void graphic_cursor_put(void) {
     v2 target = cursor;
 
-    if (sys_mode != SYSTEM_MODE_BUSY)
-        target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + ibuffer.cursor / (SCREEN_WIDTH / LETTER_WIDTH - target.x)) };
+    if (sys_mode == SYSTEM_MODE_INPUT)
+        target = (v2){ ( target.x + ibuffer.cursor ) % (SCREEN_WIDTH / LETTER_WIDTH), ( target.y + (ibuffer.cursor + target.x) / (SCREEN_WIDTH / LETTER_WIDTH)) };
 
     v2 old_cursor = cursor;
     cursor = target;
@@ -380,7 +406,7 @@ void ros_graphic_timer_init(void) {
 }
 
 void clear_screen(uint16_t rgb565) {
-    output_entry_stack_size = 0;
+    output_entry_stack_size = flash_thread_stack_size = 0;
     cursor = (v2){ 0, 0 };
     st7735_set_window(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
@@ -410,7 +436,7 @@ void disable_cursor(void)
         for (unsigned short i = 0; i < ibuffer.cursor; i++)
             move_cursor_forward();
 
-    ros_putchar(ATTRIBUTE_DEFAULT, ' ');
+    ros_putchar(ATTRIBUTE_DEFAULT, ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ');
 }
 
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
