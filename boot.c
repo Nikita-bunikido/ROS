@@ -1,5 +1,6 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <string.h>
 
 #include "spi.h"
 #include "st7735.h"
@@ -24,6 +25,20 @@ static const unsigned char preview[] PROGMEM = {
     0x00
 };
 
+#define WELCOME_LEN     12u
+
+void __callback welcome_flash(bool flag) {
+    static struct Running_String_Info string_info = (struct Running_String_Info){
+        .raw = USTR("Welcome to ROS! Type \'help\' to get started. | ROS (Rom Operating System) is a small, DOS-like, AVR-targetting operating system, written specially for my own computing machine NPAD-5 | It operates in text mode, without any UI, but applications can still draw TUI using pseudo graphics"),
+        .attrib = { 1, 1, 0,  0,  1, 0, 1,  1 },
+        .len = WELCOME_LEN,
+        .offset = 0u
+    };
+
+    ros_puts_R(&string_info);
+    string_info.offset = (string_info.offset + 1) % (strlen((const char *)(string_info.raw)) + 1);
+}
+
 void ros_bootup(void) {
     /* from ros.c */
     extern void keyboard_input(enum Virtual_Key);
@@ -37,13 +52,12 @@ void ros_bootup(void) {
     /* Screen */
     clear_screen(0x0000);
     ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
-    ros_puts(ATTRIBUTE_DEFAULT, USTR("Welcome to ROS!"), true);
+    ros_flash(welcome_flash);
+    ros_putchar(ATTRIBUTE_DEFAULT, '\n');
 
     /* Test log system */
     ros_graphic_timer_init();
     ros_log(LOG_TYPE_INFO, "What a beautiful system.");
-    ros_log(LOG_TYPE_WARNING, "Maybe something wrong...");
-    ros_log(LOG_TYPE_ERROR, "Something is definitely wrong!");
 
     /* Cursor & prompt */
     ros_put_prompt();

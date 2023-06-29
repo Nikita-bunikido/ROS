@@ -9,11 +9,13 @@
 #include "ros.h"
 
 #define TIMER0_PRESCALER    1024
-#define VGA_SWITCH(a)               (a) = (((a) & 0x88) | (((a) & 0x7) << 0x4) | (((a) & 0x70) >> 4))
+#define VGA_SWITCH(a)       (a) = (((a) & 0x88) | (((a) & 0x7) << 0x4) | (((a) & 0x70) >> 4))
 
 typedef struct {
     uint8_t x, y;
 } v2;
+
+typedef void (*__callback Flash_Routine)(bool flash_flag);
 
 enum Attribute_Preset {
     ATTRIBUTE_DEFAULT   = 0x7,
@@ -41,11 +43,19 @@ struct PACKED Output_Entry {
     unsigned char data;
 };
 
-typedef void (*__callback Flash_Routine)(bool flash_flag);
-
 struct PACKED Flash_Thread {
     Flash_Routine handle;
     v2 pos;
+};
+
+struct PACKED Running_String_Info {
+    const unsigned char *raw;
+    union {
+        struct Attribute attrib;
+        uint8_t attrib_raw;
+    };
+    uint8_t len;
+    uint8_t offset;
 };
 
 extern volatile struct PACKED Graphic_Cursor {
@@ -53,23 +63,27 @@ extern volatile struct PACKED Graphic_Cursor {
     bool visible;
 } graphic_cursor;
 
+/* --------------- Initializers --------------- */
 void ros_graphic_timer_init(void);
 
+/* --------------- General I/O --------------- */
 unsigned char ros_putchar(uint8_t, const unsigned char);
 int ros_puts(uint8_t, const unsigned char *, bool);
 int ros_puts_P(uint8_t, const unsigned char *, bool);
 int ros_vprintf(uint8_t, const char *, va_list);
 int ros_printf(uint8_t, const char *, ...) __attribute__((format(printf, 2, 3)));
+int ros_puts_R(const struct Running_String_Info * const);
 void ros_flash(Flash_Routine);
 
+/* --------------- Misc --------------- */
 void ros_put_input_buffer(unsigned short, int);
 void ros_put_prompt(void);
-
-void ros_apply_output_entrys(void);
 void clear_screen(uint16_t);
-
 void enable_cursor(void);
 void disable_cursor(void);
+
+/* --------------- Other --------------- */
+void ros_apply_output_entrys(void);
 
 inline uint8_t struct_attribute_to_raw(struct Attribute attr)
 { return *(uint8_t *)&attr; }
