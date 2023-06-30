@@ -98,7 +98,7 @@ ISR(INT0_vect) {
 
     /* 74hc165 fault */
     if ((idx - 1) >= 58)
-        HARD_ERROR(DRIVER_KEYBOARD_FAULT);
+        HARD_ERROR(FAULT_DRIVER_KEYBOARD);
 
     switch (sys_mode) {
     case SYSTEM_MODE_INPUT:

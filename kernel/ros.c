@@ -6,6 +6,7 @@
 
 #include <util/delay.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
 #include "spi.h"
@@ -104,4 +105,9 @@ void __callback keyboard_nonprintable_tab(void){
     ibuffer.cursor += 2;
 
     ros_put_input_buffer(ibuffer.cursor - 2, 0);
+}
+
+ISR(BADISR_vect) {
+    /* Unknown interrupt */
+    HARD_ERROR(FAULT_KERNEL_BAD_INTERRUPT);
 }

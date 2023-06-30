@@ -28,12 +28,14 @@ static const unsigned char preview[] PROGMEM = {
 #define WELCOME_LEN     12u
 
 void __callback welcome_flash(bool flag) {
-    static struct Running_String_Info string_info = (struct Running_String_Info){
+    static struct Running_String_Info string_info = {
         .raw = USTR("Welcome to ROS! Type \'help\' to get started. | ROS (Rom Operating System) is a small, DOS-like, AVR-targetting operating system, written specially for my own computing machine NPAD-5 | It operates in text mode, without any UI, but applications can still draw TUI using pseudo graphics"),
         .attrib = { 1, 1, 0,  0,  1, 0, 1,  1 },
         .len = WELCOME_LEN,
         .offset = 0u
     };
+
+    (void) flag;
 
     ros_puts_R(&string_info);
     string_info.offset = (string_info.offset + 1) % (strlen((const char *)(string_info.raw)) + 1);

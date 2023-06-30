@@ -7,7 +7,7 @@ CC = avr-gcc
 CFLAGS = -DF_CPU=$(F_CPU) -Os -g -mmcu=$(DEVICE)
 CFLAGS += -I include/
 CFLAGS += -Wall -Wpedantic -Wextra 
-CFLAGS += -Wno-array-bounds -Wno-format -Wno-pointer-arith
+CFLAGS += -Wno-array-bounds -Wno-format -Wno-pointer-arith -Wno-switch
 
 # Objects
 DRIVERS_DIR = drivers

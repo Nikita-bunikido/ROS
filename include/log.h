@@ -7,8 +7,9 @@
 #define HARD_ERROR(code)    ros_log(LOG_TYPE_CRITICAL, NULL, (code))
 
 enum Critical_Code {
-    DRIVER_KEYBOARD_FAULT = 0x00,
-    VIDEO_MEMORY_FAULT    = 0x10,
+    FAULT_DRIVER_KEYBOARD      = 0x00,
+    FAULT_KERNEL_BAD_INTERRUPT = 0x10,
+    FAULT_VIDEO_MEMORY         = 0x20,
 };
 
 enum Log_Type {

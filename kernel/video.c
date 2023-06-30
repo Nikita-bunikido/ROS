@@ -63,7 +63,8 @@ static unsigned short output_entry_stack_size = 0;
 static struct Flash_Thread flash_thread_stack[FLASH_THREAD_STACK_CAP] = { 0 };
 static unsigned short flash_thread_stack_size = 0;
 
-static void * volatile critical_address = NULL;
+typedef void (* Letter_Lookup_Pointer)(uint8_t *, unsigned char, uint8_t, size_t);
+static volatile Letter_Lookup_Pointer critical_address = NULL;
 
 static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const uint8_t raw) {
     uint16_t result = 0;
@@ -82,7 +83,7 @@ static void __attribute__((noinline)) letter_lookup(uint8_t *dest, unsigned char
         let = (sizeof(font) / 8) - 1;
 
     if (critical_address != letter_lookup)
-        HARD_ERROR(VIDEO_MEMORY_FAULT);
+        HARD_ERROR(FAULT_VIDEO_MEMORY);
 
     for (unsigned row = 0; (row < LETTER_HEIGHT) && (dest_size > 0); ++row)
     for (unsigned col = 0; (col < LETTER_WIDTH) && (dest_size > 0); ++col, dest_size -= 2){
