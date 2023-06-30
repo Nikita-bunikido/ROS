@@ -47,7 +47,6 @@ Using Makefile:
 
 ### TODO
 
-- Running strings
 - CHIP8 assembler ( for _X86_ )
 - CHIP-8 emulator
 - Programs executing from FLASH memory
@@ -98,3 +97,4 @@ Using Makefile:
 - Cursor visibility control
 - Flashing threads
 - Screen clear question
+- Running strings
