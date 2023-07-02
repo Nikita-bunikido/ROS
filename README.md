@@ -98,3 +98,4 @@ Using Makefile:
 - Flashing threads
 - Screen clear question
 - Running strings
+- ROS-CHIP8 lexer
