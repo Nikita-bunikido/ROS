@@ -6,6 +6,25 @@
 #include "lexer.h"
 #include "common.h"
 
+static inline __attribute__((always_inline)) char *token_type_as_cstr(const enum Token_Type type) {
+    ASM_ASSERT(type >= 0 && type <= TOKEN_TYPE_MULTIPLY);
+    
+    return (char*[TOKEN_TYPE_MULTIPLY + 1]){
+        "SYMBOLIC",
+        "HEX",
+        "DEC",
+        "STRING",
+        "CHAR",
+        "COLUMN",
+        "OPBRACKET",
+        "CLBRACKET",
+        "PLUS",
+        "MINUS",
+        "DIVIDE",
+        "MULTIPLY"
+    }[(int)type];
+}
+
 static inline __attribute__((always_inline)) struct Token *talloc(void){
     return malloc(sizeof(struct Token));
 }
@@ -69,7 +88,7 @@ static struct Token *next_token(const char **p) {
     case ':': case '(': case ')': case '+':
     case '-': case '/': case '*':
         i = tok->len = 1;
-        tok->type = (enum Token_Type)(strchr(operators, pp[i]) - operators + TOKEN_TYPE_COLUMN);
+        tok->type = (enum Token_Type)(strchr(operators, *pp) - operators + TOKEN_TYPE_COLUMN);
         break;
 
     case '\'':
@@ -105,7 +124,7 @@ static struct Token *next_token(const char **p) {
 
 void token_dump_list(const struct Token *list) {
     while (list != NULL) {
-        printf("%u:%u:\"%.*s\"\n", list->pos.line, list->pos.character, list->len, list->data);
+        printf("%u:%u:%12s:\"%.*s\"\n", list->pos.line, list->pos.character, token_type_as_cstr(list->type), list->len, list->data);
         list = list->next;
     }
 }
@@ -133,6 +152,7 @@ struct Token *tokenize_data(const char *data) {
             if (!root){
                 root = p = t;
                 t->data = token_dup_data(t);
+                t->pos = (Position){ cpos.line + 1, cpos.character + 1 };
                 continue;
             }
 
