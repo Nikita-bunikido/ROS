@@ -7,6 +7,11 @@
 *.bin
 *.out
 
+# Other
+*.txt
+*.rch8
+asm/*.xml
+
 drivers/*.o
 kernel/*.o
 
@@ -15,12 +20,6 @@ asm/*.exe
 
 # Temporary
 work/
-
-# Other
-*.txt
-*.rch8
-
-asm/*.xml
 
 # Not in use
 include/chip8.h
