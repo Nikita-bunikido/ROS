@@ -9,9 +9,9 @@ GOTO    <imm12>/<V0 + imm12>    | Direct jump
 CALL    <imm12>                 | Call procedure
 SE      <reg8>, <reg8>/<imm8>   | Skip next if equal
 SNE     <reg8>, <reg8>/<imm8>   | Skip next if not equal
-SET*    <dst8>/<dst12>/delay/sound, <reg8>/<imm8>/<reg8 - dst8>/<imm12>/delay/key
+SET*    <dst8>/<dst12>/delay, <reg8>/<imm8>/<reg8 - dst8>/<imm12>/delay/key
                                 | Set register value ( VF is affected in case of <reg8 - dst8> )
-ADD^    <reg8>/<reg12>, <reg8>/<imm8>   | Add operation ( Assembler uses Vf register as temporary, in case of <reg12> )
+ADD^    <reg8>/<reg12>, <reg8>/<imm8>   | Add operation
 OR*     <reg8>, <reg8>/<imm8>   | Or operation ( Assembler uses Vf register as temporary, in case of <imm8> )
 AND*    <reg8>, <reg8>/<imm8>   | And operation ( Assembler uses Vf register as temporary, in case of <imm8> )
 XOR*    <reg8>, <reg8>/<imm8>   | Xor operation ( Assembler uses Vf register as temporary, in case of <imm8> )
