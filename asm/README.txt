@@ -28,5 +28,11 @@ SKE     <reg8>                  | [DEPRECATED, DO NOT USE]
 SKNE    <reg8>                  | [DEPRECATED, DO NOT USE]
 SPR     <reg8>                  | [DEPRECATED, DO NOT USE]
 
+CONSTRAINTS
+===========
+SET     <reg8>, <imm12>
+SET     <reg12>, <reg8>/delay/key/<reg8 - dst8>
+SET     delay, <imm8>/<reg8 - dst8>/<imm12>/delay/key
+
 * - vF is affected in particular case
 ^ - vF is always affected
