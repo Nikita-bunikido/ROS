@@ -9,8 +9,8 @@
 
 # Other
 *.txt
-*.rch8
 asm/*.xml
+asm/echo*.rch8
 
 drivers/*.o
 kernel/*.o

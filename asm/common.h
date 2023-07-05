@@ -1,6 +1,8 @@
 #ifndef _COMMON_H
 #define _COMMON_H
 
+#include <stdbool.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdarg.h>
@@ -11,6 +13,7 @@
 
 #define ANSI_RED                "\033[31m"
 #define ANSI_YELLOW             "\033[33m"
+#define ANSI_MAGENTA            "\033[35m"
 #define ANSI_RESET              "\033[0m"
 
 typedef struct Position Position;
@@ -33,7 +36,7 @@ static inline __attribute__((noreturn)) void _asm_assert(const char * const expr
 }
 #define ASM_ASSERT_NOT_NULL(x, ...)  do{ ASM_ASSERT((x) != NULL __VA_OPT__(,) __VA_ARGS__); }while( 0 );
 
-#define ASM_WARNING(...)        _asm_warning(__VA_ARGS__)
+#define ASM_WARNING(t, ...)        _asm_warning(&(struct Input){(t)->file, NULL, (t)->pos}, __VA_ARGS__)
 static inline __attribute__((format(printf, 2, 3))) void _asm_warning(struct Input *input, const char *fmt, ...) {
     va_list vptr;
     va_start(vptr, fmt);
@@ -46,7 +49,7 @@ static inline __attribute__((format(printf, 2, 3))) void _asm_warning(struct Inp
     va_end(vptr);
 }
 
-#define ASM_ERROR(...)          _asm_error(__VA_ARGS__)
+#define ASM_ERROR(t, ...)          _asm_error(&(struct Input){(t)->file, NULL, (t)->pos}, __VA_ARGS__)
 static inline __attribute__((noreturn, format(printf, 2, 3))) void _asm_error(struct Input *input, const char *fmt, ...) {
     va_list vptr;
     va_start(vptr, fmt);
@@ -58,6 +61,11 @@ static inline __attribute__((noreturn, format(printf, 2, 3))) void _asm_error(st
 
     va_end(vptr);
     exit(EXIT_FAILURE);
+}
+
+inline bool ishex(char ch) {
+    if (isupper(ch)) ch = tolower(ch);
+    return (ch >= 'a') && (ch <= 'f');
 }
 
 #endif /* _COMMON_H */

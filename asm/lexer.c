@@ -7,9 +7,9 @@
 #include "common.h"
 
 static inline __attribute__((always_inline)) char *token_type_as_cstr(const enum Token_Type type) {
-    ASM_ASSERT(type >= 0 && type <= TOKEN_TYPE_MULTIPLY);
+    ASM_ASSERT(type >= 0 && type < TOKEN_TYPES_NUMBER);
     
-    return (char*[TOKEN_TYPE_MULTIPLY + 1]){
+    return (char *[TOKEN_TYPES_NUMBER]){
         "SYMBOLIC",
         "HEX",
         "DEC",
@@ -21,7 +21,8 @@ static inline __attribute__((always_inline)) char *token_type_as_cstr(const enum
         "PLUS",
         "MINUS",
         "DIVIDE",
-        "MULTIPLY"
+        "MULTIPLY",
+        "AT"
     }[(int)type];
 }
 
@@ -66,9 +67,9 @@ static char *next_line(const char **stream) {
     return buf;
 }
 
-static struct Token *next_token(const char **p) {
+static struct Token *next_token(const char **p, const char *file) {
     struct Token *tok;
-    const char *operators = ":()+-/*", *pp;
+    const char *operators = ":()+-/*@", *pp;
     bool character = false;
     long i = 0, j = 0;
 
@@ -81,12 +82,13 @@ static struct Token *next_token(const char **p) {
     *tok = (struct Token){
         .data = (char *)pp,
         .pos = {0, 0},
+        .file = file,
         .next = NULL
     };
 
     switch (*pp) {
     case ':': case '(': case ')': case '+':
-    case '-': case '/': case '*':
+    case '-': case '/': case '*': case '@':
         i = tok->len = 1;
         tok->type = (enum Token_Type)(strchr(operators, *pp) - operators + TOKEN_TYPE_COLUMN);
         break;
@@ -103,7 +105,7 @@ static struct Token *next_token(const char **p) {
     case '0': case '1': case '2': case '3': case '4': 
     case '5': case '6': case '7': case '8': case '9':
         tok->type = TOKEN_TYPE_DEC;
-        for (; isdigit(pp[i]); i++);
+        for (; isdigit(pp[i]) || ishex(pp[i]); i++);
         if (pp[i] == 'h'){
             tok->type = TOKEN_TYPE_HEX;
             i ++;
@@ -139,16 +141,16 @@ void token_free_list(struct Token *list) {
     }
 }
 
-struct Token *tokenize_data(const char *data) {
+struct Token *tokenize_data(const struct Input *input) {
     Position cpos = {0u, 0u};
-    const char *line = NULL;
+    const char *line = NULL, *data = input->base;
     struct Token *t, *root, *p;
     t = p = root = NULL;
 
     while ((line = next_line(&data))) {
         const char *line_origin = line;
 
-        while ((t = next_token(&line)) != NULL) {
+        while ((t = next_token(&line, input->file)) != NULL) {
             if (!root){
                 root = p = t;
                 t->data = token_dup_data(t);

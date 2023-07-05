@@ -22,10 +22,14 @@ enum Token_Type {
     TOKEN_TYPE_MINUS,
     TOKEN_TYPE_DIVIDE,
     TOKEN_TYPE_MULTIPLY,
+    TOKEN_TYPE_AT,
+
+    TOKEN_TYPES_NUMBER
 };
 
 typedef struct Token Token;
 struct Token {
+    const char *file;
     char *data;
     size_t len;
     enum Token_Type type;
@@ -39,6 +43,6 @@ void input_create(struct Input *, const char *);
 
 void token_dump_list(const struct Token *);
 void token_free_list(struct Token *);
-struct Token *tokenize_data(const char *);
+struct Token *tokenize_data(const struct Input *);
 
 #endif /* _LEXER_H */
