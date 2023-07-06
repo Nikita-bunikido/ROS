@@ -45,4 +45,10 @@ void token_dump_list(const struct Token *);
 void token_free_list(struct Token *);
 struct Token *tokenize_data(const struct Input *);
 
+inline int token_cmp_cstr(struct Token *tok, const char *cstr) {
+    const char *p = tok->data;
+    for(; *p && *cstr && (tolower(*cstr) == tolower(*p)); p++, cstr++);
+    return *p - *cstr;
+}
+
 #endif /* _LEXER_H */

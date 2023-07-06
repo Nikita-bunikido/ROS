@@ -93,7 +93,7 @@ struct Instruction_Info {
 };
 
 struct Instruction {
-    struct Token *tok, *label;
+    struct Token *tok;
     enum Instruction_Type type;
 
     int noperands;
@@ -109,7 +109,27 @@ struct Instruction {
     } operands[MAX_OPERANDS];
 };
 
-struct Instruction *instructions_parse(const struct Token *root, size_t *nins);
-int assemble_instruction(const struct Instruction *instruction, uint16_t *result);
+struct Dataseg {
+    bool is_reserved;
+    size_t len;
+    uint8_t *raw;
+};
+
+struct Block {
+    struct Token *label;
+    bool is_data;
+
+    union {
+        struct Instruction ins;
+        struct Dataseg data;
+    };
+};
+
+struct Block *blocks_parse(const struct Token *root, size_t *nbl);
+int assemble_block(const struct Block *block);
+
+/* Conversions */
+void token_as_imm(struct Operand *self, struct Token *tok);
+void trim_string_quotes(struct Token *tok);
 
 #endif /* _ASM_H */

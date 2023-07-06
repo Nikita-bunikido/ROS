@@ -72,3 +72,16 @@ dump v0, v0
 
 ;; LOAD    V0, <reg8>              | Load registers from I
 load v0, v6
+
+; Pseudo instructions
+dataseg
+	12h , 128 ,
+	"ROS - Rom Operating System", 0Ah, 0
+dataend
+
+reserve
+	100
+
+; Test instructions after data
+set I, 888h
+dump v0, v7

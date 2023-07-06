@@ -7,8 +7,8 @@
 
 #include "common.h"
 #include "lexer.h"
-
 #include "asm.h"
+#include "pseudoins.h"
 
 #define MAX_VARIANTS    12
 
@@ -371,17 +371,11 @@ static char *operand_type_as_cstr(const enum Operand_Type type) {
     return strdup(temp_buf);
 }
 
-static int token_cmp_cstr(struct Token *tok, const char *cstr) {
-    const char *p = tok->data;
-    for(; *p && *cstr && (tolower(*cstr) == tolower(*p)); p++, cstr++);
-    return *p - *cstr;
-}
-
-static void trim_string_quotes(struct Token *tok) {
+void trim_string_quotes(struct Token *tok) {
     const char beg = tok->data[0], end = tok->data[strlen(tok->data) - 1];
 
     if ((beg == '\'' && end == '\'') || (beg == '\"' && end == '\"')) {
-        memmove(tok->data, tok->data + 1, strlen(tok->data) - 1);
+        memmove(tok->data, tok->data + 1, strlen(tok->data));
         tok->data[strlen(tok->data) - 1] = '\0';
     }
 }
@@ -417,7 +411,7 @@ static void token_as_register(struct Operand *self, struct Token *tok) {
     self->reg8 = islower(reg_num_char) ? ((reg_num_char - 'a') + 10) : (reg_num_char - '0');
 }
 
-static void token_as_imm(struct Operand *self, struct Token *tok) {
+void token_as_imm(struct Operand *self, struct Token *tok) {
     char temp_buf[128] = { 0 };
     int tempi;
 
@@ -570,37 +564,71 @@ int assemble_instruction(const struct Instruction *instruction, uint16_t *result
     return 0;
 }
 
-static void *push_instruction(struct Instruction *base, size_t *n, const struct Instruction *ins) {
+int assemble_block(const struct Block *block) {
+    if (!(block->is_data)) {
+        uint16_t raw;
+        if (assemble_instruction(&(block->ins), &raw) < 0)
+            return -1;
+
+        fprintf(stdout, "%02X %02X\n", raw >> 8, raw & 0xFF);
+        return 0;
+    }
+
+    if (block->data.is_reserved) {
+        const char *reserved_stub = "Built by ROS-CHIP-8", *p = reserved_stub;
+        for (size_t i = 0; i < block->data.len; i++) {
+            fprintf(stdout, "%02X ", *p++);
+            if (p[-1] == '\0')
+                p = reserved_stub;
+        }
+    
+        fputc('\n', stdout);
+        return 0;
+    }
+
+    for (size_t i = 0; i < block->data.len; i++)
+        fprintf(stdout, "%02X ", block->data.raw[i]);
+
+    fputc('\n', stdout);
+    return 0;
+}
+
+static void *push_block(struct Block *base, size_t *n, const struct Block *bl) {
     void *temp;
-    ASM_ASSERT((temp = realloc(base, sizeof(struct Instruction) * ++*n)) != NULL, 
+    ASM_ASSERT((temp = realloc(base, sizeof(struct Block) * ++*n)) != NULL, 
         if (base){ free(base); base = NULL; });
 
     base = temp;
-    base[*n - 1] = *ins;
+    base[*n - 1] = *bl;
     return base;
 }
 
-struct Instruction *instructions_parse(const struct Token *root, size_t *nins) {
-    struct Instruction *ins_arr = NULL, ins;
-    size_t ins_num = 0;
+struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
+    struct Block *bl_arr = NULL, bl;
+    size_t bl_num = 0;
 
     for (const struct Token *tok = root; tok != NULL; tok = tok->next) {
-        memset(&ins, 0, sizeof(struct Instruction));
-        ins.tok = tok;
+        memset(&bl, 0, sizeof(struct Block));
+        
+        if (try_parse_pseudo_instruction(&bl, &tok) >= 0) {
+            bl_arr = push_block(bl_arr, &bl_num, &bl);
+            continue;
+        }
 
-        if (token_as_instruction_type(ins.tok, &ins.type) < 0)
-            ASM_ERROR(ins.tok, "Invalid instruction: \"%s\".", ins.tok->data);
+        bl.ins.tok = tok;
+        if (token_as_instruction_type(bl.ins.tok, &(bl.ins.type)) < 0)
+            ASM_ERROR(bl.ins.tok, "Invalid instruction: \"%s\".", bl.ins.tok->data);
 
-        ins.noperands = asm_info[ins.type].noperands;
+        bl.ins.noperands = asm_info[bl.ins.type].noperands;
 
         bool match = true;
-        for (int op = 0; op < asm_info[ins.type].noperands; op ++) {
+        for (int op = 0; op < asm_info[bl.ins.type].noperands; op ++) {
             ASM_ASSERT_NOT_NULL(tok = tok->next);
-            token_as_operand(ins.operands + op, tok);
+            token_as_operand(bl.ins.operands + op, tok);
 
             /* Check for vF temporary use */
-            if ((op == 1) && (ins.operands[op].type == OP_IMM8) &&
-                (ins.type == INS_OR || ins.type == INS_AND || ins.type == INS_XOR || ins.type == INS_SUB))
+            if ((op == 1) && (bl.ins.operands[op].type == OP_IMM8) &&
+                (bl.ins.type == INS_OR || bl.ins.type == INS_AND || bl.ins.type == INS_XOR || bl.ins.type == INS_SUB))
             {
                 /* vF = imm8 */
                 struct Instruction temp_instruction = (struct Instruction){
@@ -615,23 +643,27 @@ struct Instruction *instructions_parse(const struct Token *root, size_t *nins) {
                         }, 
                         {
                             .type = OP_IMM8,
-                            .imm8 = ins.operands[op].imm8,
+                            .imm8 = bl.ins.operands[op].imm8,
                             .tok = NULL
                         }
                     }
                 };
 
-                ins_arr = push_instruction(ins_arr, &ins_num, &temp_instruction);
+                struct Block temp_block;
+                memset(&temp_block, 0, sizeof(temp_block));
+                temp_block.ins = temp_instruction;
+
+                bl_arr = push_block(bl_arr, &bl_num, &temp_block);
             
                 /* Operation */
                 temp_instruction = (struct Instruction){
-                    .type = ins.type,
+                    .type = bl.ins.type,
                     .noperands = 2,
 
                     .operands = {
                         {
                             .type = OP_REG8,
-                            .reg8 = ins.operands[0].reg8,
+                            .reg8 = bl.ins.operands[0].reg8,
                             .tok = NULL
                         },
                         {
@@ -641,41 +673,42 @@ struct Instruction *instructions_parse(const struct Token *root, size_t *nins) {
                         }
                     }
                 };
+                temp_block.ins = temp_instruction;
 
-                ins_arr = push_instruction(ins_arr, &ins_num, &temp_instruction);
+                bl_arr = push_block(bl_arr, &bl_num, &temp_block);
                 goto _skip_default_parse_step;
             }
 
-            match &= (asm_info[ins.type].types[op] & ins.operands[op].type) != 0;
+            match &= (asm_info[bl.ins.type].types[op] & bl.ins.operands[op].type) != 0;
             /* IMM8 -> IMM12 ( if instruction requires ) */
             if (!match) {
-                if ((asm_info[ins.type].types[op] & OP_IMM12) && ins.operands[op].type == OP_IMM8) {
-                    ins.operands[op].type = OP_IMM12;
-                    ins.operands[op].imm12 = (uint16_t)(ins.operands[op].imm8);
+                if ((asm_info[bl.ins.type].types[op] & OP_IMM12) && bl.ins.operands[op].type == OP_IMM8) {
+                    bl.ins.operands[op].type = OP_IMM12;
+                    bl.ins.operands[op].imm12 = (uint16_t)(bl.ins.operands[op].imm8);
                 }
-                match = (asm_info[ins.type].types[op] & ins.operands[op].type) != 0;
+                match = (asm_info[bl.ins.type].types[op] & bl.ins.operands[op].type) != 0;
 
-                ASM_WARNING(tok, "Autoconverted value %x from IMM8 to IMM12.", ins.operands[op].imm8);
+                ASM_WARNING(tok, "Autoconverted value %x from IMM8 to IMM12.", bl.ins.operands[op].imm8);
             }
 
             if (!match)
-                ASM_ERROR(tok, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[ins.type].types[op]), tok->data, operand_type_as_cstr(ins.operands[op].type));
+                ASM_ERROR(tok, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[bl.ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[bl.ins.type].types[op]), tok->data, operand_type_as_cstr(bl.ins.operands[op].type));
         }
 
         /* Constraints */
-        if ((ins.type == INS_SET) && (ins.operands[0].type == OP_REG8) && (ins.operands[1].type == OP_IMM12))
+        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_REG8) && (bl.ins.operands[1].type == OP_IMM12))
             ASM_ERROR(tok, "Instruction set with operands <reg8>, <imm12> is constraint and cannot be used.");
-        if ((ins.type == INS_SET) && (ins.operands[0].type == OP_REG12) && ((ins.operands[1].type == OP_REG8) || (ins.operands[1].type == OP_TIMER) || (ins.operands[1].type == OP_KEY) || (ins.operands[1].type == OP_SPEC)))
+        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_REG12) && ((bl.ins.operands[1].type == OP_REG8) || (bl.ins.operands[1].type == OP_TIMER) || (bl.ins.operands[1].type == OP_KEY) || (bl.ins.operands[1].type == OP_SPEC)))
             ASM_ERROR(tok, "Instruction set with operands <reg12>, <reg8>/delay/key/<reg8 - dst8> is constraint and cannot be used.");
-        if ((ins.type == INS_SET) && (ins.operands[0].type == OP_TIMER) && (ins.operands[1].type != OP_REG8))
+        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_TIMER) && (bl.ins.operands[1].type != OP_REG8))
             ASM_ERROR(tok, "Instruction set with operands delay, <imm8>/<reg8 - dst8>/<imm12>/delay/key is constraint and cannot be used.");
 
-        ins_arr = push_instruction(ins_arr, &ins_num, &ins);
+        bl_arr = push_block(bl_arr, &bl_num, &bl);
 _skip_default_parse_step:
     }
 
-    if (nins)
-        *nins = ins_num;
+    if (nbl)
+        *nbl = bl_num;
 
-    return ins_arr;
+    return bl_arr;
 }

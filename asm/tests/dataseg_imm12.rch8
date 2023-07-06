@@ -1,0 +1,1 @@
+dataseg 123h dataend ; IMM12 cannot be used

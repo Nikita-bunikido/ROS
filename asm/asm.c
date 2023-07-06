@@ -25,21 +25,19 @@ int main(int argc, const char *argv[]) {
         struct Token *troot = tokenize_data(input_stack + i);
         token_dump_list(troot);
 
-        size_t instructions_num;
-        struct Instruction *instructions = instructions_parse(troot, &instructions_num);
+        size_t blocks_num;
+        struct Block *blocks = blocks_parse(troot, &blocks_num);
 
         puts("RAW CODE\n========");
-        for (size_t i = 0; i < instructions_num; i++) {
-            uint16_t raw;
-            if (assemble_instruction(instructions + i, &raw) < 0) {
+        for (size_t i = 0; i < blocks_num; i++)
+            if (assemble_block(blocks + i) < 0) {
                 printf("[%zu instruction assembling fault.]\n", i);
                 exit(EXIT_FAILURE);
             }
-        
-            printf(ANSI_MAGENTA "%04X" ANSI_RESET " : %04X\n", i * 2 + 512, raw);
-        }
 
-        free(instructions);
+        for (size_t i = 0; i < blocks_num; i++)
+            if (blocks[i].is_data && !blocks[i].data.is_reserved) free(blocks[i].data.raw);
+
         token_free_list(troot);
         input_delete(input_stack + i);
     }
