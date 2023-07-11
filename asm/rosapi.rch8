@@ -1,0 +1,65 @@
+;; ------------------------ ;;
+;; rosapi.rch8              ;;
+;;                          ;;
+;; Common  ROS header with  ;;
+;; defines for syscalls     ;;
+;; ------------------------ ;;
+
+; General
+define _ros_version	1
+define null8		00h
+define null12		000h
+define argaddr		001h
+
+;; ----------------------- ;;
+;; ROS calling convention  ;;
+;;                         ;;
+;; Addresses (IMM12):      ;;
+;; I                       ;;
+;;                         ;;
+;; Arguments (IMM8):       ;;
+;; v1 ... v5               ;;
+;;                         ;;
+;; Return value:           ;;
+;; Addresses (IMM12):      ;;
+;; I                       ;;
+;; Constants (IMM8):       ;;
+;; v0                      ;;
+;; ----------------------- ;;
+
+; CROS syscalls
+;; --------- I/O --------- ;;
+define r_puts		000h	; imm8 r_puts(imm12 cstr)
+define r_putc		001h	; imm8 r_putc(imm8 ch)
+define r_putf		002h	; imm8 r_putf(imm12 fmt, __VA_ARGS_OUT__)
+define r_gets		003h	; imm8 r_gets(imm12 buf, imm8 max)
+define r_getc		004h	; imm8 r_getc(void)
+define r_getf		005h	; imm8 r_getf(imm12 fmt, __VA_ARGS_IN__)
+
+;; -- Arguments parsing -- ;;
+define r_geta		006h	; imm8 r_geta(imm8 idx)
+define r_getb		007h	; imm8 r_getb(void)
+
+;; ------- Cursor -------- ;;
+define r_shcr		008h	; imm8 r_shcr(void)
+define r_hdcr		009h	; imm8 r_hdcr(void)
+define r_stcr		00Ah	; imm8 r_stcr(imm8 state)
+define r_mvcr		00Bh	; imm8 r_mvcr(imm8 row, imm8 col)
+
+;; -------- Flow --------- ;;
+define r_paus		00Ch	; void r_paus(void)
+define r_slms		00Dh	; void r_slms(imm12 ms)
+define r_exit		00Eh	; void r_exit(imm8 code)
+define r_abrt		00Fh	; void r_abrt(void)
+
+;; -------- Log ---------- ;;
+define LG_INFO		0		;
+define LG_ERROR		1		;
+define LG_WARN		2		;
+define r_logg		010h	; imm8 r_log(imm8 type, imm12 fmt, __VA_ARGS_OUT__)
+
+;; ------ Sys only ------- ;;
+define FLT_DRIVER	00h		;
+define FLT_KERNEL	10h		;
+define FLT_VIDEO	20h		;
+define s_hder		011h	; void s_hder(imm8 code)
