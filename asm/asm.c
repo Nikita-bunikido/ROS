@@ -22,6 +22,8 @@ int main(int argc, const char *argv[]) {
         input_create(&input_stack[input_stack_size ++], argv[--argc]);
 
     for (size_t i = 0; i < input_stack_size - 1; i++) {
+        clear_defenitions();
+
         struct Token *troot = tokenize_data(input_stack + i);
         token_dump_list(troot);
 

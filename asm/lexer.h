@@ -51,4 +51,13 @@ inline int token_cmp_cstr(struct Token *tok, const char *cstr) {
     return *p - *cstr;
 }
 
+inline int token_cmp_token(struct Token *tok1, struct Token *tok2) {
+    extern char *token_dup_data(struct Token *);
+    
+    char *temp = token_dup_data(tok2);
+    int res = token_cmp_cstr(tok1, temp);
+    free(temp);
+    return res;
+}
+
 #endif /* _LEXER_H */

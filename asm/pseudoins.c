@@ -5,6 +5,7 @@
 #include "common.h"
 #include "lexer.h"
 #include "asm.h"
+#include "pseudoins.h"
 
 #define CHUNK_SIZE      512
 
@@ -88,12 +89,9 @@ static void parse_pseudo_instruction_dataseg(struct Block *block, struct Token *
 
             DATASEG_PUSH_ARRAY(block->data, t->data, real_len, strlen(t->data));
             break;
-        
-        case TOKEN_TYPE_SYMBOLIC:
-            ASM_ERROR(t, "Unknown name: \"%s\" in data segment declaration.", t->data);
-            break;
-        
+
         default:
+            ASM_ERROR(t, "Unknown name: \"%s\" in data segment declaration.", t->data);
             break;
         }
     }
@@ -101,16 +99,65 @@ static void parse_pseudo_instruction_dataseg(struct Block *block, struct Token *
     *root = t;
 }
 
+static void parse_pseudo_instruction_define(struct Block *block, struct Token **root) {
+    struct Token *t = *root;
+    struct Operand temp;
+    (void) block;
+    
+    ASM_ASSERT_NOT_NULL(t = t->next);
+    struct Definition def = (struct Definition) {
+        .tok = t
+    };
+
+    ASM_ASSERT_NOT_NULL(t = t->next);
+    switch (t->type) {
+    case TOKEN_TYPE_HEX:
+    case TOKEN_TYPE_DEC:
+        token_as_imm(&temp, t);
+    
+        if (temp.type == OP_IMM8) {
+            def.imm8 = temp.imm8;
+            def.type = OP_IMM8;
+            break;
+        }
+
+        def.imm12 = temp.imm12;
+        def.type = OP_IMM12;
+        break;
+
+    case TOKEN_TYPE_CHAR:
+        if (strlen(t->data) == 2)
+            ASM_ERROR(t, "Empty character literal: \"\" in data segment declaration.");
+
+        trim_string_quotes(t);        
+
+        def.imm8 = (uint8_t)*(t->data);
+        def.type = OP_IMM8;
+        break;
+
+    default:
+        ASM_ERROR(t, "Unknown name: \"%s\" in define statement.", t->data);
+    }
+
+    defenition_push(&def);
+    *root = t;
+}
+
 int try_parse_pseudo_instruction(struct Block *block, struct Token **root) {
     if (!token_cmp_cstr(*root, "dataseg")) {
         parse_pseudo_instruction_dataseg(block, root);
-        return 0;
+        return PSEUDO_INSTRUCTION_SUCCESS;
     }
 
     if (!token_cmp_cstr(*root, "reserve")) {
         parse_pseudo_instruction_reserve(block, root);
-        return 0;
+        return PSEUDO_INSTRUCTION_SUCCESS;
     }
 
-    return -1;
+    if (!token_cmp_cstr(*root, "define")) {
+        parse_pseudo_instruction_define(block, root);
+        return PSEUDO_INSTRUCTION_DO_NOT_PUSH;
+    }
+
+    return PSEUDO_INSTRUCTION_FAILURE;
 }

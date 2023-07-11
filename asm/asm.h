@@ -92,6 +92,20 @@ struct Instruction_Info {
     uint8_t types[MAX_OPERANDS];
 };
 
+union Ros_Chip8_Value {
+    uint8_t imm8, reg8;
+    uint16_t imm12;
+    struct Token *symbolic;
+};
+
+struct Definition {
+    struct Token *tok;
+    union Ros_Chip8_Value;
+    uint8_t type;
+};
+extern void defenition_push(const struct Definition *);
+extern void clear_defenitions(void);
+
 struct Instruction {
     struct Token *tok;
     enum Instruction_Type type;
@@ -100,10 +114,8 @@ struct Instruction {
     struct Operand {
         uint8_t type;
 
-        union {
-            uint8_t imm8, reg8;
-            uint16_t imm12;
-        };
+        union Ros_Chip8_Value;
+        bool is_symbolic;
 
         struct Token *tok;
     } operands[MAX_OPERANDS];
@@ -116,7 +128,6 @@ struct Dataseg {
 };
 
 struct Block {
-    struct Token *label;
     bool is_data;
 
     union {

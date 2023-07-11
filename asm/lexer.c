@@ -30,7 +30,7 @@ static inline __attribute__((always_inline)) struct Token *talloc(void){
     return malloc(sizeof(struct Token));
 }
 
-static inline __attribute__((always_inline)) char *token_dup_data(struct Token *tok) {
+char *token_dup_data(struct Token *tok) {
     char *buf;
     ASM_ASSERT_NOT_NULL(buf = malloc(tok->len + 1));
 

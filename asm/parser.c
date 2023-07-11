@@ -10,7 +10,61 @@
 #include "asm.h"
 #include "pseudoins.h"
 
-#define MAX_VARIANTS    12
+#define MAX_VARIANTS        12
+#define DEFINES_STACK_CAP   256
+
+#define PROGRAM_LOAD_ADDR   0x200
+
+static struct Definition defines_stack[DEFINES_STACK_CAP] = { 0 };
+static size_t defines_stack_size = 0;
+
+void defenition_push(const struct Definition *def) {
+    ASM_ASSERT(defines_stack_size <= DEFINES_STACK_CAP - 1);
+    defines_stack[defines_stack_size ++] = *def;
+}
+
+void clear_defenitions(void) {
+    memset(defines_stack, 0, defines_stack_size * sizeof(struct Definition));
+    defines_stack_size = 0;
+}
+
+static struct Definition *definition_lookup(const struct Token *tok) {
+    struct Definition *d = defines_stack;
+    for(d = defines_stack; (d < (defines_stack + defines_stack_size)) && token_cmp_token(d->tok, tok); d ++);
+    return (d == (defines_stack + defines_stack_size)) ? NULL : d;
+}
+
+static uint16_t measure_len_between_blocks(const struct Block *block1, const struct Block *block2, const struct Token *label) {
+    int length = 0;
+    ASM_ASSERT_NOT_NULL(block1);
+    ASM_ASSERT_NOT_NULL(block2);
+    ASM_ASSERT(block1 <= block2);
+
+    for (const struct Block *bl = block1; bl != block2; bl ++) {
+        if (!(bl->is_data)) {
+            length += 2;
+            continue;
+        }
+
+        length += bl->data.len;
+    }
+
+    length += PROGRAM_LOAD_ADDR + 2;
+    if (length > 0xFFF)
+        ASM_WARNING(label, "Value %x is not in imm8/imm12 range. Defaulting to %x.", length, (unsigned)length & 0xFFF);
+
+    return (uint16_t)((unsigned)length & 0xFFF);
+}
+
+static void create_label(struct Definition *self, const struct Block *bl_arr, const struct Block *bl_current, const struct Token *base) {
+    ASM_ASSERT_NOT_NULL(self);
+
+    *self = (struct Definition) {
+        .tok = (struct Token *)base,
+        .imm12 = measure_len_between_blocks(bl_arr, bl_current, base),
+        .type = OP_IMM12
+    };
+}
 
 /* For assembling */
 static const struct Real_Instruction_Info asm_real_info[INS_MAX][MAX_VARIANTS] = {
@@ -355,6 +409,12 @@ static bool is_hexadecimal(const char *buf) {
     return *buf == '\0';
 }
 
+static bool is_register(const Token *tok) {
+    if (strlen(tok->data) == 1 && (tolower(*(tok->data)) == 'i')) return true;
+    if (strlen(tok->data) == 2 && (tolower(*(tok->data)) == 'v') && (is_decimal(tok->data + 1) || is_hexadecimal(tok->data + 1))) return true;
+    return false;
+}
+
 static char *operand_type_as_cstr(const enum Operand_Type type) {
     char temp_buf[260] = { 0 };
     *temp_buf = '\0';
@@ -465,7 +525,7 @@ static void token_as_operand(struct Operand *self, struct Token *tok) {
         return;
     }
 
-    if (strlen(tok->data) <= 2) {
+    if (is_register(tok)) {
         /* Register */
         token_as_register(self, tok);
         return;
@@ -480,6 +540,12 @@ static void token_as_operand(struct Operand *self, struct Token *tok) {
     if (!token_cmp_cstr(tok, "key")) {
         /* Key */
         self->type = OP_KEY;
+        return;
+    }
+
+    if (tok->type == TOKEN_TYPE_SYMBOLIC) {
+        self->is_symbolic = true;
+        self->symbolic = tok;
         return;
     }
 
@@ -575,7 +641,7 @@ int assemble_block(const struct Block *block) {
     }
 
     if (block->data.is_reserved) {
-        const char *reserved_stub = "Built by ROS-CHIP-8", *p = reserved_stub;
+        const char *reserved_stub = "Built by ROS-CHIP-8 asm", *p = reserved_stub;
         for (size_t i = 0; i < block->data.len; i++) {
             fprintf(stdout, "%02X ", *p++);
             if (p[-1] == '\0')
@@ -603,28 +669,135 @@ static void *push_block(struct Block *base, size_t *n, const struct Block *bl) {
     return base;
 }
 
+static inline __attribute__((always_inline)) void constraint_check(const struct Instruction ins) {
+    if ((ins.type == INS_SET) && (ins.operands[0].type == OP_REG8) && (ins.operands[1].type == OP_IMM12))
+        ASM_ERROR(ins.tok, "Instruction set with operands <reg8>, <imm12> is constraint and cannot be used.");
+    if ((ins.type == INS_SET) && (ins.operands[0].type == OP_REG12) && ((ins.operands[1].type == OP_REG8) || (ins.operands[1].type == OP_TIMER) || (ins.operands[1].type == OP_KEY) || (ins.operands[1].type == OP_SPEC)))
+        ASM_ERROR(ins.tok, "Instruction set with operands <reg12>, <reg8>/delay/key/<reg8 - dst8> is constraint and cannot be used.");
+    if ((ins.type == INS_SET) && (ins.operands[0].type == OP_TIMER) && (ins.operands[1].type != OP_REG8))
+        ASM_ERROR(ins.tok, "Instruction set with operands delay, <imm8>/<reg8 - dst8>/<imm12>/delay/key is constraint and cannot be used.");
+}
+
+static void blocks_correct_symbolic(struct Block *bl_arr, size_t nbl) {
+    for (struct Block *bl = bl_arr; bl < bl_arr + nbl; bl ++) {
+        if (bl->is_data) continue;
+    
+        for (int op = 0; op < bl->ins.noperands; op ++) {
+            if (!bl->ins.operands[op].is_symbolic) continue;
+
+            struct Token *symb = bl->ins.operands[op].symbolic;
+            struct Definition *def = definition_lookup(symb);
+            if (!def)
+                ASM_ERROR(symb, "Unknown name \"%s\".", symb->data);
+
+            bool conv_imm12 = false;
+            if ((asm_info[bl->ins.type].types[op] == OP_IMM12) && (def->type == OP_IMM8)) {
+                conv_imm12 = true;
+                def->type = OP_IMM12;
+                def->imm12 = def->imm8;
+
+                ASM_WARNING(symb, "Autoconverted value %x from IMM8 to IMM12.", def->imm8);
+            }
+
+            if ((asm_info[bl->ins.type].types[op] & def->type) == 0)
+                ASM_ERROR(symb, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[bl->ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[bl->ins.type].types[op]), symb->data, operand_type_as_cstr(def->type));
+
+            bl->ins.operands[op] = (struct Operand) {
+                .type = def->type,
+                .tok = NULL
+            };
+
+            switch (def->type) {
+            case OP_REG8 | OP_V0:
+            case OP_REG8:
+                bl->ins.operands[op].reg8 = def->reg8;
+                break;
+            case OP_IMM8:
+                bl->ins.operands[op].imm8 = def->imm8;
+                break;
+            case OP_IMM12:
+                bl->ins.operands[op].imm12 = def->imm12;
+                break;
+            default:
+                ASM_ERROR(symb, "Cannot parse definition \"%s\" of type %s.", symb->data, operand_type_as_cstr(def->type));
+            }
+        }
+
+        constraint_check(bl->ins);
+    }
+}
+
 struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
     struct Block *bl_arr = NULL, bl;
     size_t bl_num = 0;
 
     for (const struct Token *tok = root; tok != NULL; tok = tok->next) {
         memset(&bl, 0, sizeof(struct Block));
-        
-        if (try_parse_pseudo_instruction(&bl, &tok) >= 0) {
+
+        if (!token_cmp_cstr(tok, "include")) {
+            /* include statement */
+            struct Input include_input;
+            struct Token *include_root;
+
+            tok = tok->next;
+            if (tok->type != TOKEN_TYPE_STRING)
+                ASM_ERROR(tok, "Include path must be string");
+
+            trim_string_quotes((struct Token *)tok);
+            input_create(&include_input, tok->data);
+
+            include_root = tokenize_data(&include_input);
+
+            bl_arr = blocks_parse(include_root, &bl);
+            input_delete(&include_input);
+            continue;
+        }
+
+        int ret_pseudo;
+        if ((ret_pseudo = try_parse_pseudo_instruction(&bl, (struct Token **)&tok)) != PSEUDO_INSTRUCTION_FAILURE) {
+            if (ret_pseudo == PSEUDO_INSTRUCTION_DO_NOT_PUSH) continue;
+
             bl_arr = push_block(bl_arr, &bl_num, &bl);
             continue;
         }
 
-        bl.ins.tok = tok;
-        if (token_as_instruction_type(bl.ins.tok, &(bl.ins.type)) < 0)
-            ASM_ERROR(bl.ins.tok, "Invalid instruction: \"%s\".", bl.ins.tok->data);
+        if (token_as_instruction_type(tok, &(bl.ins.type)) < 0) {
+            struct Token *label = tok;
+            struct Definition *def;
 
+            if ((def = definition_lookup(label)) != NULL)
+                ASM_ERROR(label, "Label \"%s\" redefined. Previous definition was on line %u", def->tok->data, def->tok->pos.line);
+
+            if (label->next->type != TOKEN_TYPE_COLUMN)
+                ASM_ERROR(label, "Expected \':\' right after \"%s\" label declaration.", label->data);
+
+            tok = tok->next;
+
+            if (!bl_arr) {
+                /* No instructions yet */
+                defines_stack[defines_stack_size ++] = (struct Definition) {
+                    .tok = label,
+                    .imm12 = PROGRAM_LOAD_ADDR,
+                    .type = OP_IMM12
+                };
+                continue;
+            }
+
+            create_label(&defines_stack[defines_stack_size ++], bl_arr, bl_arr + bl_num - 1, label);
+            continue;
+        }
+
+        bl.ins.tok = tok;
         bl.ins.noperands = asm_info[bl.ins.type].noperands;
 
         bool match = true;
         for (int op = 0; op < asm_info[bl.ins.type].noperands; op ++) {
             ASM_ASSERT_NOT_NULL(tok = tok->next);
             token_as_operand(bl.ins.operands + op, tok);
+
+            /* symbolic */
+            if (bl.ins.operands[op].is_symbolic)
+                continue;
 
             /* Check for vF temporary use */
             if ((op == 1) && (bl.ins.operands[op].type == OP_IMM8) &&
@@ -695,17 +868,12 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 ASM_ERROR(tok, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[bl.ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[bl.ins.type].types[op]), tok->data, operand_type_as_cstr(bl.ins.operands[op].type));
         }
 
-        /* Constraints */
-        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_REG8) && (bl.ins.operands[1].type == OP_IMM12))
-            ASM_ERROR(tok, "Instruction set with operands <reg8>, <imm12> is constraint and cannot be used.");
-        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_REG12) && ((bl.ins.operands[1].type == OP_REG8) || (bl.ins.operands[1].type == OP_TIMER) || (bl.ins.operands[1].type == OP_KEY) || (bl.ins.operands[1].type == OP_SPEC)))
-            ASM_ERROR(tok, "Instruction set with operands <reg12>, <reg8>/delay/key/<reg8 - dst8> is constraint and cannot be used.");
-        if ((bl.ins.type == INS_SET) && (bl.ins.operands[0].type == OP_TIMER) && (bl.ins.operands[1].type != OP_REG8))
-            ASM_ERROR(tok, "Instruction set with operands delay, <imm8>/<reg8 - dst8>/<imm12>/delay/key is constraint and cannot be used.");
-
+        constraint_check(bl.ins);
         bl_arr = push_block(bl_arr, &bl_num, &bl);
 _skip_default_parse_step:
     }
+
+    blocks_correct_symbolic(bl_arr, bl_num);
 
     if (nbl)
         *nbl = bl_num;
