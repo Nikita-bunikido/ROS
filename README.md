@@ -1,11 +1,14 @@
 # ROS
 
 ![languages count](https://img.shields.io/github/languages/count/Nikita-bunikido/ROS)
-![lines of code](https://img.shields.io/tokei/lines/github/Nikita-bunikido/ROS)
 ![license](https://img.shields.io/github/license/Nikita-bunikido/ROS)
 ![stars count](https://img.shields.io/github/stars/Nikita-bunikido/ROS?style=social)
 ![forks count](https://img.shields.io/github/forks/Nikita-bunikido/ROS?style=social)
 ![yt subs count](https://img.shields.io/youtube/channel/subscribers/UCW3RoBYtEBnrX_dOI3ELlxA?style=social)
+![C_lang](https://img.shields.io/badge/C-00599C?style=for-the-badge&logo=c&logoColor=whit)
+
+
+[![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=Nikita-Bunikido&repo=ROS&title_color=0F0F0F&icon_color=0F0F0F&text_color=0F0F0F&bg_color=f9f9f9)](https://github.com/extremecodetv/ExtremeCodeOS)
 
 ![ROS demo](pict/demo2.png)
 
@@ -98,4 +101,8 @@ Using Makefile:
 - Flashing threads
 - Screen clear question
 - Running strings
-- ROS-CHIP8 lexer
+- ROS-CHIP8 X86 Assembler lexer
+- ROS-CHIP8 X86 Assembler parser
+- ROS-CHIP8 X86 Assembler core
+- ROS-CHIP8 X86 Assembler data segments
+- ROS-CHIP8 X86 Assembler define, include support
