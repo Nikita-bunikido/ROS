@@ -25,7 +25,7 @@
             <Keywords name="Folders in comment, middle"></Keywords>
             <Keywords name="Folders in comment, close"></Keywords>
             <Keywords name="Keywords1">cros&#x000D;&#x000A;ret&#x000D;&#x000A;cls&#x000D;&#x000A;goto&#x000D;&#x000A;call&#x000D;&#x000A;se&#x000D;&#x000A;sne&#x000D;&#x000A;set&#x000D;&#x000A;add&#x000D;&#x000A;or&#x000D;&#x000A;and&#x000D;&#x000A;xor&#x000D;&#x000A;sub&#x000D;&#x000A;shr&#x000D;&#x000A;shl&#x000D;&#x000A;rnd&#x000D;&#x000A;bcd&#x000D;&#x000A;dump&#x000D;&#x000A;load</Keywords>
-            <Keywords name="Keywords2">dataseg&#x000D;&#x000A;dataend&#x000D;&#x000A;reserve&#x000D;&#x000A;</Keywords>
+            <Keywords name="Keywords2">dataseg&#x000D;&#x000A;dataend&#x000D;&#x000A;reserve&#x000D;&#x000A;define&#x000D;&#x000A;include&#x000D;&#x000A;</Keywords>
             <Keywords name="Keywords3"></Keywords>
             <Keywords name="Keywords4"></Keywords>
             <Keywords name="Keywords5"></Keywords>
