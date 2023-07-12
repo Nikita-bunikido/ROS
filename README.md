@@ -10,7 +10,7 @@
 
 [![Readme Card](https://github-readme-stats.vercel.app/api/pin/?username=Nikita-Bunikido&repo=ROS&title_color=0F0F0F&icon_color=0F0F0F&text_color=0F0F0F&bg_color=f9f9f9)](https://github.com/extremecodetv/ExtremeCodeOS)
 
-![ROS demo](pict/demo2.png)
+![ROS demo](pict/demo3.png)
 
 ### Introduction
 
