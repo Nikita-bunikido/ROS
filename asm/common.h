@@ -14,7 +14,20 @@
 #define ANSI_RED                "\033[31m"
 #define ANSI_YELLOW             "\033[33m"
 #define ANSI_MAGENTA            "\033[35m"
+#define ANSI_CYAN               "\033[36m"
 #define ANSI_RESET              "\033[0m"
+
+extern volatile struct Warning_Info {
+    union {
+        struct __attribute__((__packed__)) {
+            bool w_error;
+            bool w_separate;
+            bool w_conversions;
+            bool w_range;
+        };
+        bool w_raw[4];
+    };
+} warning_info;
 
 typedef struct Position Position;
 struct Position {
@@ -36,7 +49,13 @@ static inline __attribute__((noreturn)) void _asm_assert(const char * const expr
 }
 #define ASM_ASSERT_NOT_NULL(x, ...)  do{ ASM_ASSERT((x) != NULL __VA_OPT__(,) __VA_ARGS__); }while( 0 );
 
-#define ASM_WARNING(t, ...)        _asm_warning(&(struct Input){(t)->file, NULL, (t)->pos}, __VA_ARGS__)
+#define ASM_WARNING(t, ...)                                                     \
+do {                                                                            \
+    if (warning_info.w_error)                                                   \
+        _asm_error(&(struct Input){(t)->file, NULL, (t)->pos}, __VA_ARGS__);    \
+    else                                                                        \
+        _asm_warning(&(struct Input){(t)->file, NULL, (t)->pos}, __VA_ARGS__);  \
+} while( 0 )                                                                    
 static inline __attribute__((format(printf, 2, 3))) void _asm_warning(struct Input *input, const char *fmt, ...) {
     va_list vptr;
     va_start(vptr, fmt);

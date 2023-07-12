@@ -13,10 +13,27 @@
 #define MAX_VARIANTS        12
 #define DEFINES_STACK_CAP   256
 
-#define PROGRAM_LOAD_ADDR   0x200
+volatile uint16_t _load_addr = 0x200;
 
 static struct Definition defines_stack[DEFINES_STACK_CAP] = { 0 };
 static size_t defines_stack_size = 0;
+
+static inline __attribute__((always_inline)) char *bool_as_cstr(const bool b) {
+    return (char *[2]){ "false", "true" }[(int)b];
+}
+
+void dump_assembler(void) {
+    fprintf(stdout, ANSI_CYAN "ROS-CHIP-8 Assembler v1.0 ( ALPHA )\n" ANSI_CYAN
+                    ANSI_MAGENTA "-warn_error" ANSI_RESET "\t\t = %s\n"
+                    ANSI_MAGENTA "-warn_separate" ANSI_RESET "\t\t = %s\n"
+                    ANSI_MAGENTA "-warn_conversions" ANSI_RESET "\t = %s\n"
+                    ANSI_MAGENTA "-warn_range" ANSI_RESET "\t\t = %s\n"
+                    ANSI_MAGENTA "-loadaddr " ANSI_RESET "\t\t = %"PRIx16 "\n\n",
+                    bool_as_cstr(warning_info.w_error), bool_as_cstr(warning_info.w_separate),
+                    bool_as_cstr(warning_info.w_conversions), bool_as_cstr(warning_info.w_range),
+                    _load_addr);
+    fprintf(stdout, "Thank you for using ROS-CHIP-8 Assembler!\n");
+}
 
 void defenition_push(const struct Definition *def) {
     ASM_ASSERT(defines_stack_size <= DEFINES_STACK_CAP - 1);
@@ -49,7 +66,7 @@ static uint16_t measure_len_between_blocks(const struct Block *block1, const str
         length += bl->data.len;
     }
 
-    length += PROGRAM_LOAD_ADDR + 2;
+    length += _load_addr + 2;
     if (length > 0xFFF)
         ASM_WARNING(label, "Value %x is not in imm8/imm12 range. Defaulting to %x.", length, (unsigned)length & 0xFFF);
 
@@ -777,7 +794,7 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 /* No instructions yet */
                 defines_stack[defines_stack_size ++] = (struct Definition) {
                     .tok = label,
-                    .imm12 = PROGRAM_LOAD_ADDR,
+                    .imm12 = _load_addr,
                     .type = OP_IMM12
                 };
                 continue;

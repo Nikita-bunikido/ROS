@@ -143,4 +143,8 @@ int assemble_block(const struct Block *block);
 void token_as_imm(struct Operand *self, struct Token *tok);
 void trim_string_quotes(struct Token *tok);
 
+extern volatile uint16_t _load_addr;
+
+void dump_assembler(void);
+
 #endif /* _ASM_H */
