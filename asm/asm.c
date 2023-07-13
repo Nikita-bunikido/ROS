@@ -6,10 +6,48 @@
 #include "common.h"
 #include "lexer.h"
 #include "asm.h"
+#include "stack.h"
 
 #define MAX_INPUTS      32
 
+enum Warn_Type {
+    WARN_TYPE_WERROR = 0,
+    WARN_TYPE_WSEPARATE,
+    WARN_TYPE_WCONVERSIONS,
+    WARN_TYPE_WRANGE,
+    WARN_TYPE_WALL,
+    WARN_TYPE_UNKNOWN
+};
+typedef enum Warn_Type Warn_Type;
+
+static void __attribute__((noinline)) _blocks_cleanup_callback(void *item) {
+    struct Block block = *(struct Block *)item;
+
+    if (block.is_data && !block.data.is_reserved)
+        free(block.data.raw);
+}
+
+static void __attribute__((noinline)) _tokens_cleanup_callback(void *item) {
+    struct Token *token_list = *(struct Token **)item;
+
+    if (token_list)
+        token_free_list(token_list);
+}
+
+static void __attribute__((noinline)) _inputs_cleanup_callback(void *item) {
+    struct Input input = *(struct Input *)item;
+    input_delete(&input);
+}
+
 volatile struct Warning_Info warning_info = { 0 };
+
+volatile Cleanup_Stack blocks_cleanup = { 0 };
+volatile Cleanup_Stack tokens_cleanup = { 0 };
+volatile Cleanup_Stack inputs_cleanup = { 0 };
+
+volatile Cleanup_Stack_Callback blocks_cleanup_callback = _blocks_cleanup_callback;
+volatile Cleanup_Stack_Callback tokens_cleanup_callback = _tokens_cleanup_callback;
+volatile Cleanup_Stack_Callback inputs_cleanup_callback = _inputs_cleanup_callback;
 
 void __attribute__((noreturn)) usage(FILE *f, int argc, const char **argv) {
     ASM_UNUSED(argc);
@@ -23,16 +61,6 @@ void __attribute__((noreturn)) usage(FILE *f, int argc, const char **argv) {
                "-loadaddr <load address> - Change load address ( default - 200h )\n");
     exit(EXIT_FAILURE);
 }
-
-enum Warn_Type {
-    WARN_TYPE_WERROR = 0,
-    WARN_TYPE_WSEPARATE,
-    WARN_TYPE_WCONVERSIONS,
-    WARN_TYPE_WRANGE,
-    WARN_TYPE_WALL,
-    WARN_TYPE_UNKNOWN
-};
-typedef enum Warn_Type Warn_Type;
 
 static Warn_Type option_as_warn_type(const char *opt) {
     for (int i = 0; i < WARN_TYPE_UNKNOWN; ++i)
@@ -59,6 +87,7 @@ int main(int argc, const char *argv[]) {
 
         if (*arg != '-') {
             input_create(&input_stack[input_stack_size ++], arg);
+            STACK_PUSH(inputs_cleanup, input_stack[input_stack_size - 1]);
             continue;
         }
 
@@ -69,7 +98,7 @@ int main(int argc, const char *argv[]) {
                 warning_info.w_error = false;
                 continue;
             }
-            
+
             warning_info.w_raw[(unsigned)wt] = true;
             continue;
         }
@@ -81,8 +110,7 @@ int main(int argc, const char *argv[]) {
             if (1 != sscanf(argv[i], "%" PRIx16 "h", &addr))
                 if (1 != sscanf(argv[i], "%" PRIX16 "h", &addr)) {
                     fprintf(stderr, "Value \"%s\" cannot be treated as address.\n", argv[i]);
-                    for (size_t i = 0; i < input_stack_size - 1; i++)
-                        input_delete(input_stack + i);
+                    TOTAL_CLEANUP();
                     exit(EXIT_FAILURE);
                 }
 
@@ -91,8 +119,7 @@ int main(int argc, const char *argv[]) {
         }
 
         fprintf(stderr, "Unknown option: \"%s\".\n", arg);
-        for (size_t i = 0; i < input_stack_size - 1; i++)
-            input_delete(input_stack + i);
+        TOTAL_CLEANUP();
         exit(EXIT_FAILURE);
     }
 
@@ -102,24 +129,23 @@ int main(int argc, const char *argv[]) {
         clear_defenitions();
 
         struct Token *troot = tokenize_data(input_stack + i);
-        //token_dump_list(troot);
+        STACK_PUSH(tokens_cleanup, troot);
 
         size_t blocks_num;
         struct Block *blocks = blocks_parse(troot, &blocks_num);
+        for (size_t i = 0; i < blocks_num; i ++)
+            STACK_PUSH(blocks_cleanup, blocks[i]);
 
         puts("RAW CODE\n========");
         for (size_t i = 0; i < blocks_num; i++)
             if (assemble_block(blocks + i) < 0) {
                 printf("[%zu instruction assembling fault.]\n", i);
+                TOTAL_CLEANUP();
                 exit(EXIT_FAILURE);
             }
-
-        for (size_t i = 0; i < blocks_num; i++)
-            if (blocks[i].is_data && !blocks[i].data.is_reserved) free(blocks[i].data.raw);
-
-        token_free_list(troot);
-        input_delete(input_stack + i);
+        
+        TOTAL_CLEANUP();
     }
-   
+
     return 0;
 }

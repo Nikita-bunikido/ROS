@@ -9,6 +9,7 @@
 #include "lexer.h"
 #include "asm.h"
 #include "pseudoins.h"
+#include "stack.h"
 
 #define MAX_VARIANTS        12
 #define DEFINES_STACK_CAP   256
@@ -679,9 +680,9 @@ int assemble_block(const struct Block *block) {
 }
 
 static void *push_block(struct Block *base, size_t *n, const struct Block *bl) {
+    STACK_PUSH(blocks_cleanup, *bl);
     void *temp;
-    ASM_ASSERT((temp = realloc(base, sizeof(struct Block) * ++*n)) != NULL, 
-        if (base){ free(base); base = NULL; });
+    ASM_ASSERT((temp = realloc(base, sizeof(struct Block) * ++*n)) != NULL);
 
     base = temp;
     base[*n - 1] = *bl;
@@ -747,31 +748,44 @@ static void blocks_correct_symbolic(struct Block *bl_arr, size_t nbl) {
     }
 }
 
+static void parse_includes(struct Token *root) {
+    struct Input input;
+    
+    for (struct Token *tok = root; tok != NULL; tok = tok->next) {
+        if (token_cmp_cstr(tok, "include")) continue;
+        const struct Token base = *tok;
+        struct Token *const basep = tok;
+
+        tok = tok->next;
+        if (tok->type != TOKEN_TYPE_STRING)
+            ASM_ERROR(tok, "Include path must be string");
+
+        trim_string_quotes((struct Token *)tok);
+        input_create(&input, tok->data);
+        STACK_PUSH(inputs_cleanup, input);
+
+        struct Token *include_root = tokenize_data(&input);
+        parse_includes(include_root);
+
+        basep->next = include_root;
+        for(; include_root->next != NULL; include_root = include_root->next);
+
+        /*                          include    path */
+        include_root->next = base . next    -> next;
+        tok = include_root;
+    }
+}
+
 struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
     struct Block *bl_arr = NULL, bl;
     size_t bl_num = 0;
 
+    parse_includes(root);
+
     for (const struct Token *tok = root; tok != NULL; tok = tok->next) {
         memset(&bl, 0, sizeof(struct Block));
 
-        if (!token_cmp_cstr(tok, "include")) {
-            /* include statement */
-            struct Input include_input;
-            struct Token *include_root;
-
-            tok = tok->next;
-            if (tok->type != TOKEN_TYPE_STRING)
-                ASM_ERROR(tok, "Include path must be string");
-
-            trim_string_quotes((struct Token *)tok);
-            input_create(&include_input, tok->data);
-
-            include_root = tokenize_data(&include_input);
-
-            bl_arr = blocks_parse(include_root, &bl);
-            input_delete(&include_input);
-            continue;
-        }
+        if (!token_cmp_cstr(tok, "include")) continue;
 
         int ret_pseudo;
         if ((ret_pseudo = try_parse_pseudo_instruction(&bl, (struct Token **)&tok)) != PSEUDO_INSTRUCTION_FAILURE) {
@@ -823,6 +837,9 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
             if ((op == 1) && (bl.ins.operands[op].type == OP_IMM8) &&
                 (bl.ins.type == INS_OR || bl.ins.type == INS_AND || bl.ins.type == INS_XOR || bl.ins.type == INS_SUB))
             {
+                if (warning_info.w_separate)
+                    ASM_WARNING(bl.ins.tok, "Separated instruction: %s, vf register affected.", asm_info[bl.ins.type].mnemonic);
+
                 /* vF = imm8 */
                 struct Instruction temp_instruction = (struct Instruction){
                     .type = INS_SET,

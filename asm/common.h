@@ -9,6 +9,8 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#include "stack.h"
+
 #define COMMA                   ,
 
 #define ANSI_RED                "\033[31m"
@@ -16,6 +18,19 @@
 #define ANSI_MAGENTA            "\033[35m"
 #define ANSI_CYAN               "\033[36m"
 #define ANSI_RESET              "\033[0m"
+
+extern volatile Cleanup_Stack blocks_cleanup;
+extern volatile Cleanup_Stack tokens_cleanup;
+extern volatile Cleanup_Stack inputs_cleanup;
+
+extern volatile Cleanup_Stack_Callback blocks_cleanup_callback;
+extern volatile Cleanup_Stack_Callback tokens_cleanup_callback;
+extern volatile Cleanup_Stack_Callback inputs_cleanup_callback;
+
+#define TOTAL_CLEANUP(...)                                  \
+    STACK_CLEANUP(blocks_cleanup, blocks_cleanup_callback); \
+    STACK_CLEANUP(tokens_cleanup, tokens_cleanup_callback); \
+    STACK_CLEANUP(inputs_cleanup, inputs_cleanup_callback); \
 
 extern volatile struct Warning_Info {
     union {
@@ -45,9 +60,10 @@ struct Input {
 #define ASM_ASSERT(expr, ...)   do{ if(expr) break; __VA_OPT__(__VA_ARGS__;) _asm_assert(#expr, __FILE__, __LINE__); } while( 0 )
 static inline __attribute__((noreturn)) void _asm_assert(const char * const expr, const char *file, unsigned line) {
     fprintf(stderr, "%s:%u: " ANSI_RED "ROS-CHIP-8 Assertion failed" ANSI_RESET ": \"%s\"\n", file, line, expr);
+    TOTAL_CLEANUP();
     abort();
 }
-#define ASM_ASSERT_NOT_NULL(x, ...)  do{ ASM_ASSERT((x) != NULL __VA_OPT__(,) __VA_ARGS__); }while( 0 );
+#define ASM_ASSERT_NOT_NULL(x, ...)  do{ ASM_ASSERT((void *)(x) != NULL __VA_OPT__(,) __VA_ARGS__); }while( 0 );
 
 #define ASM_WARNING(t, ...)                                                     \
 do {                                                                            \
@@ -79,6 +95,7 @@ static inline __attribute__((noreturn, format(printf, 2, 3))) void _asm_error(st
     fputc('\n', stderr);
 
     va_end(vptr);
+    TOTAL_CLEANUP();
     exit(EXIT_FAILURE);
 }
 
