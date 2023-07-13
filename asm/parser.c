@@ -650,32 +650,31 @@ int assemble_instruction(const struct Instruction *instruction, uint16_t *result
     return 0;
 }
 
-int assemble_block(const struct Block *block) {
+int assemble_block(const struct Block *block, FILE *f) {
+    ASM_ASSERT_NOT_NULL(f);
+    
     if (!(block->is_data)) {
         uint16_t raw;
         if (assemble_instruction(&(block->ins), &raw) < 0)
             return -1;
 
-        fprintf(stdout, "%02X %02X\n", raw >> 8, raw & 0xFF);
+        raw = ((raw & 0xFF) << 8) | (raw >> 8);
+        fwrite(&raw, 2, 1, f);
         return 0;
     }
 
     if (block->data.is_reserved) {
         const char *reserved_stub = "Built by ROS-CHIP-8 Assembler", *p = reserved_stub;
         for (size_t i = 0; i < block->data.len; i++) {
-            fprintf(stdout, "%02X ", *p++);
+            fwrite(p++, 1, 1, f);
             if (p[-1] == '\0')
                 p = reserved_stub;
         }
     
-        fputc('\n', stdout);
         return 0;
     }
 
-    for (size_t i = 0; i < block->data.len; i++)
-        fprintf(stdout, "%02X ", block->data.raw[i]);
-
-    fputc('\n', stdout);
+    fwrite(block->data.raw, 1, block->data.len, f);
     return 0;
 }
 
