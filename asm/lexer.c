@@ -141,6 +141,12 @@ void token_free_list(struct Token *list) {
     }
 }
 
+static bool is_end(const char *end, const char *line) {
+    for(; *line != *end; line ++)
+        if (*line == '\r' || *line == '\n') return false;
+    return true;
+}
+
 struct Token *tokenize_data(const struct Input *input) {
     Position cpos = {0u, 0u};
     const char *line = NULL, *data = input->base;
@@ -165,6 +171,9 @@ struct Token *tokenize_data(const struct Input *input) {
             p->next = t;
             p = t;
         }
+
+        if (is_end(data + strlen(data), line))
+            break;
 
         cpos.character = 0;
         cpos.line ++;
