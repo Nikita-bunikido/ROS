@@ -698,53 +698,56 @@ static inline __attribute__((always_inline)) void constraint_check(const struct 
         ASM_ERROR(ins.tok, "Instruction set with operands delay, <imm8>/<reg8 - dst8>/<imm12>/delay/key is constraint and cannot be used.");
 }
 
+static void block_correct_symbolic(struct Block *bl) {
+    for (int op = 0; op < bl->ins.noperands; op ++) {
+        if (!bl->ins.operands[op].is_symbolic) continue;
+
+        struct Token *symb = bl->ins.operands[op].symbolic;
+        struct Definition *def = definition_lookup(symb);
+        if (!def)
+            ASM_ERROR(symb, "Unknown name \"%s\".", symb->data);
+
+        bool conv_imm12 = false;
+        if ((asm_info[bl->ins.type].types[op] == OP_IMM12) && (def->type == OP_IMM8)) {
+            conv_imm12 = true;
+            def->type = OP_IMM12;
+            def->imm12 = def->imm8;
+
+            if (warning_info.w_conversions)
+                ASM_WARNING(symb, "Autoconverted value %x from IMM8 to IMM12.", def->imm8);
+        }
+
+        if ((asm_info[bl->ins.type].types[op] & def->type) == 0)
+            ASM_ERROR(symb, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[bl->ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[bl->ins.type].types[op]), symb->data, operand_type_as_cstr(def->type)); 
+
+        bl->ins.operands[op] = (struct Operand) {
+            .type = def->type,
+            .tok = NULL
+        };
+
+       switch (def->type) {
+        case OP_REG8 | OP_V0:
+        case OP_REG8:
+            bl->ins.operands[op].reg8 = def->reg8;
+            break;
+        case OP_IMM8:
+            bl->ins.operands[op].imm8 = def->imm8;
+            break;
+        case OP_IMM12:
+            bl->ins.operands[op].imm12 = def->imm12;
+            break;
+        default:
+            ASM_ERROR(symb, "Cannot parse definition \"%s\" of type %s.", symb->data, operand_type_as_cstr(def->type));
+        }
+    }
+
+    constraint_check(bl->ins);
+}
+
 static void blocks_correct_symbolic(struct Block *bl_arr, size_t nbl) {
     for (struct Block *bl = bl_arr; bl < bl_arr + nbl; bl ++) {
         if (bl->is_data) continue;
-    
-        for (int op = 0; op < bl->ins.noperands; op ++) {
-            if (!bl->ins.operands[op].is_symbolic) continue;
-
-            struct Token *symb = bl->ins.operands[op].symbolic;
-            struct Definition *def = definition_lookup(symb);
-            if (!def)
-                ASM_ERROR(symb, "Unknown name \"%s\".", symb->data);
-
-            bool conv_imm12 = false;
-            if ((asm_info[bl->ins.type].types[op] == OP_IMM12) && (def->type == OP_IMM8)) {
-                conv_imm12 = true;
-                def->type = OP_IMM12;
-                def->imm12 = def->imm8;
-
-                if (warning_info.w_conversions)
-                    ASM_WARNING(symb, "Autoconverted value %x from IMM8 to IMM12.", def->imm8);
-            }
-
-            if ((asm_info[bl->ins.type].types[op] & def->type) == 0)
-                ASM_ERROR(symb, "Instruction %s requires argument %d to be %s, but argument \"%s\" is %s.", asm_info[bl->ins.type].mnemonic, op + 1, operand_type_as_cstr(asm_info[bl->ins.type].types[op]), symb->data, operand_type_as_cstr(def->type));
-
-            bl->ins.operands[op] = (struct Operand) {
-                .type = def->type,
-                .tok = NULL
-            };
-
-            switch (def->type) {
-            case OP_REG8 | OP_V0:
-            case OP_REG8:
-                bl->ins.operands[op].reg8 = def->reg8;
-                break;
-            case OP_IMM8:
-                bl->ins.operands[op].imm8 = def->imm8;
-                break;
-            case OP_IMM12:
-                bl->ins.operands[op].imm12 = def->imm12;
-                break;
-            default:
-                ASM_ERROR(symb, "Cannot parse definition \"%s\" of type %s.", symb->data, operand_type_as_cstr(def->type));
-            }
-        }
-
-        constraint_check(bl->ins);
+        block_correct_symbolic(bl);
     }
 }
 
@@ -829,15 +832,10 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
             ASM_ASSERT_NOT_NULL(tok = tok->next);
             token_as_operand(bl.ins.operands + op, tok);
 
-            /* symbolic */
-            if (bl.ins.operands[op].is_symbolic)
-                continue;
-
-            /* Check for vF temporary use */
-            if ((op == 1) && (bl.ins.operands[op].type == OP_IMM8) &&
-                (bl.ins.type == INS_OR || bl.ins.type == INS_AND || bl.ins.type == INS_XOR || bl.ins.type == INS_SUB))
+            if ((op == 1) && ((bl.ins.operands[op].type == OP_IMM8) || (bl.ins.operands[op].is_symbolic)) &&
+                 (bl.ins.type == INS_OR || bl.ins.type == INS_AND || bl.ins.type == INS_XOR || bl.ins.type == INS_SUB))
             {
-                if (warning_info.w_separate)
+                 if (warning_info.w_separate)
                     ASM_WARNING(bl.ins.tok, "Separated instruction: %s, vf register affected.", asm_info[bl.ins.type].mnemonic);
 
                 /* vF = imm8 */
@@ -850,7 +848,7 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                             .type = OP_REG8,
                             .reg8 = 0xF,
                             .tok = NULL
-                        }, 
+                        },
                         {
                             .type = OP_IMM8,
                             .imm8 = bl.ins.operands[op].imm8,
@@ -858,6 +856,11 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                         }
                     }
                 };
+
+                if (bl.ins.operands[1].is_symbolic) {
+                    temp_instruction.operands[1].is_symbolic = true;
+                    temp_instruction.operands[1].symbolic = bl.ins.operands[1].tok;
+                }
 
                 struct Block temp_block;
                 memset(&temp_block, 0, sizeof(temp_block));
@@ -888,6 +891,10 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 bl_arr = push_block(bl_arr, &bl_num, &temp_block);
                 goto _skip_default_parse_step;
             }
+
+            /* symbolic */
+            if (bl.ins.operands[op].is_symbolic)
+                continue;
 
             match &= (asm_info[bl.ins.type].types[op] & bl.ins.operands[op].type) != 0;
             /* IMM8 -> IMM12 ( if instruction requires ) */
