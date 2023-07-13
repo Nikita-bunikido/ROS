@@ -688,8 +688,6 @@ static void *push_block(struct Block *base, size_t *n, const struct Block *bl) {
     return base;
 }
 
-ASM_WARNING
-
 static inline __attribute__((always_inline)) void constraint_check(const struct Instruction ins) {
     if ((ins.type == INS_SET) && (ins.operands[0].type == OP_REG8) && (ins.operands[1].type == OP_IMM12))
         ASM_ERROR(ins.tok, "Instruction set with operands <reg8>, <imm12> is constraint and cannot be used.");

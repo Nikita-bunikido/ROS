@@ -151,8 +151,6 @@ int main(int argc, const char *argv[]) {
 
         size_t blocks_num;
         struct Block *blocks = blocks_parse(troot, &blocks_num);
-        for (size_t i = 0; i < blocks_num; i ++)
-            STACK_PUSH(blocks_cleanup, blocks[i]);
 
         char result_path[PATH_MAX];
         generate_output_name(result_path, input_stack[i].file);
@@ -166,6 +164,9 @@ int main(int argc, const char *argv[]) {
             }
         
         fclose(f);
+
+        STACK_CLEANUP(blocks_cleanup, blocks_cleanup_callback);
+        STACK_CLEANUP(tokens_cleanup, tokens_cleanup_callback);
     }
     TOTAL_CLEANUP();
 
