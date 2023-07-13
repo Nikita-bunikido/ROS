@@ -67,7 +67,7 @@ static uint16_t measure_len_between_blocks(const struct Block *block1, const str
         length += bl->data.len;
     }
 
-    length += _load_addr + 2;
+    length += _load_addr;
     if (warning_info.w_range && (length > 0xFFF))
         ASM_WARNING(label, "Value %x is not in imm8/imm12 range. Defaulting to %x.", length, (unsigned)length & 0xFFF);
 
@@ -819,7 +819,7 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 continue;
             }
 
-            create_label(&defines_stack[defines_stack_size ++], bl_arr, bl_arr + bl_num - 1, label);
+            create_label(&defines_stack[defines_stack_size ++], bl_arr, bl_arr + bl_num, label);
             continue;
         }
 
