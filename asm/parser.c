@@ -67,7 +67,7 @@ static uint16_t measure_len_between_blocks(const struct Block *block1, const str
     }
 
     length += _load_addr + 2;
-    if (length > 0xFFF)
+    if (warning_info.w_range && (length > 0xFFF))
         ASM_WARNING(label, "Value %x is not in imm8/imm12 range. Defaulting to %x.", length, (unsigned)length & 0xFFF);
 
     return (uint16_t)((unsigned)length & 0xFFF);
@@ -518,7 +518,9 @@ void token_as_imm(struct Operand *self, struct Token *tok) {
         return;
     }
 
-    ASM_WARNING(tok, "Value %x is not in imm8/imm12 range. Defaulting to %x.", tempi, (unsigned)tempi & 0xFFF);
+    if (warning_info.w_range)
+        ASM_WARNING(tok, "Value %x is not in imm8/imm12 range. Defaulting to %x.", tempi, (unsigned)tempi & 0xFFF);
+    
     self->imm12 = (uint16_t)(tempi & 0xFFF);
     self->type = OP_IMM12;
 }
@@ -658,7 +660,7 @@ int assemble_block(const struct Block *block) {
     }
 
     if (block->data.is_reserved) {
-        const char *reserved_stub = "Built by ROS-CHIP-8 asm", *p = reserved_stub;
+        const char *reserved_stub = "Built by ROS-CHIP-8 Assembler", *p = reserved_stub;
         for (size_t i = 0; i < block->data.len; i++) {
             fprintf(stdout, "%02X ", *p++);
             if (p[-1] == '\0')
@@ -713,7 +715,8 @@ static void blocks_correct_symbolic(struct Block *bl_arr, size_t nbl) {
                 def->type = OP_IMM12;
                 def->imm12 = def->imm8;
 
-                ASM_WARNING(symb, "Autoconverted value %x from IMM8 to IMM12.", def->imm8);
+                if (warning_info.w_conversions)
+                    ASM_WARNING(symb, "Autoconverted value %x from IMM8 to IMM12.", def->imm8);
             }
 
             if ((asm_info[bl->ins.type].types[op] & def->type) == 0)
@@ -878,7 +881,8 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 }
                 match = (asm_info[bl.ins.type].types[op] & bl.ins.operands[op].type) != 0;
 
-                ASM_WARNING(tok, "Autoconverted value %x from IMM8 to IMM12.", bl.ins.operands[op].imm8);
+                if (warning_info.w_conversions)
+                    ASM_WARNING(tok, "Autoconverted value %x from IMM8 to IMM12.", bl.ins.operands[op].imm8);
             }
 
             if (!match)
