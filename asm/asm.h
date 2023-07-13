@@ -137,7 +137,7 @@ struct Block {
 };
 
 struct Block *blocks_parse(const struct Token *root, size_t *nbl);
-int assemble_block(const struct Block *block);
+int assemble_block(const struct Block *block, FILE *f);
 
 /* Conversions */
 void token_as_imm(struct Operand *self, struct Token *tok);

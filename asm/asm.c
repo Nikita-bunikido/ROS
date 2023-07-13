@@ -74,6 +74,18 @@ static Warn_Type option_as_warn_type(const char *opt) {
     return WARN_TYPE_UNKNOWN;
 }
 
+static inline __attribute__((always_inline)) const char *extension(const char *path) {
+    return strrchr(path, '.');
+}
+
+static inline __attribute__((always_inline)) void generate_output_name(char *buf, const char *path) {
+    ASM_ASSERT_NOT_NULL(buf);
+
+    strcpy(buf, path);
+    *strrchr(buf, '.') = '\0';
+    strcat(buf, ".rex");
+}
+
 int main(int argc, const char *argv[]) {
 
     if (argc < 2)
@@ -86,6 +98,12 @@ int main(int argc, const char *argv[]) {
         const char *arg = argv[i];
 
         if (*arg != '-') {
+            if (strcmp(extension(arg), ".rch8") && strcmp(extension(arg), ".RCH8")) {
+                fprintf(stderr, "Unknown file extension: \"%s\"\n", extension(arg));
+                TOTAL_CLEANUP();
+                exit(EXIT_FAILURE);
+            }
+
             input_create(&input_stack[input_stack_size ++], arg);
             STACK_PUSH(inputs_cleanup, input_stack[input_stack_size - 1]);
             continue;
@@ -136,16 +154,20 @@ int main(int argc, const char *argv[]) {
         for (size_t i = 0; i < blocks_num; i ++)
             STACK_PUSH(blocks_cleanup, blocks[i]);
 
-        puts("RAW CODE\n========");
+        char result_path[PATH_MAX];
+        generate_output_name(result_path, input_stack[i].file);
+        FILE *f = fopen(result_path, "wb");
+
         for (size_t i = 0; i < blocks_num; i++)
-            if (assemble_block(blocks + i) < 0) {
+            if (assemble_block(blocks + i, f) < 0) {
                 printf("[%zu instruction assembling fault.]\n", i);
                 TOTAL_CLEANUP();
                 exit(EXIT_FAILURE);
             }
         
-        TOTAL_CLEANUP();
+        fclose(f);
     }
+    TOTAL_CLEANUP();
 
     return 0;
 }
