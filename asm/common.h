@@ -13,12 +13,21 @@
 
 #define COMMA                   ,
 
-#define ANSI_RED                "\033[31m"
-#define ANSI_YELLOW             "\033[33m"
-#define ANSI_MAGENTA            "\033[35m"
-#define ANSI_CYAN               "\033[36m"
-#define ANSI_GREEN              "\033[32m"
-#define ANSI_RESET              "\033[0m"
+#if defined(ANSI_SEQ)
+    #define ANSI_RED                "\033[31m"
+    #define ANSI_YELLOW             "\033[33m"
+    #define ANSI_MAGENTA            "\033[35m"
+    #define ANSI_CYAN               "\033[36m"
+    #define ANSI_GREEN              "\033[32m"
+    #define ANSI_RESET              "\033[0m"
+#else
+    #define ANSI_RED                ""
+    #define ANSI_YELLOW             ""
+    #define ANSI_MAGENTA            ""
+    #define ANSI_CYAN               ""
+    #define ANSI_GREEN              ""
+    #define ANSI_RESET              ""
+#endif
 
 extern volatile Cleanup_Stack blocks_cleanup;
 extern volatile Cleanup_Stack tokens_cleanup;
