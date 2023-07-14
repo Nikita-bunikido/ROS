@@ -1,11 +1,21 @@
 ROS-CHIP-8 Assembler
 
+USAGE
+=====
+asm <files> <options>                                                                       
+options:                                                                                                                                    
+    -warn_error - Turn all warnings into errors
+    -warn_separate - Auto separating one complex instruction into two
+    -warn_conversions - IMM8 to IMM12 auto conversions
+    -warn_range - Auto defaulting to IMM12/IMM8 range using 'and' operation
+    -warn_all - Turn on all warnings
+    -loadaddr <load address> - Change load address ( default - 200h )
+
 SYNTAX
 ======
 [ label ] : mnemonic [ op1 ], [ op2 ], ...
 
-NOTE: Elements in [] are optional.
-
+NOTE: Elements in [] are opti
 MNEMONICS
 =========
 CROS    <imm12>                 | Call ROS-API
@@ -62,26 +72,27 @@ There is a special instruction CROS in ROS-CHIP-8 instruction set.
 It corresponds to syscall. Syscalls are performed by OS each time
 application calls this instruction. Logical code of syscall is stored
 directly in CROS argument as IMM12. There are defines for all provided
-syscalls in "rosapi.rch8".
+syscalls in "rossys.rch8".
+
+NOTE: In user level applications, it's always a good practice to call
+subroutines, defined in "rosapi.rch8", instead of doing syscalls directly.
 
 CALLING CONVENTION
 ==================
-From "rosapi.rch8":
-;; ----------------------- ;;
-;; ROS calling convention  ;;
-;;                         ;;
-;; Addresses (IMM12):      ;;
-;; I                       ;;
-;;                         ;;
-;; Arguments (IMM8):       ;;
-;; v1 ... v5               ;;
-;;                         ;;
-;; Return value:           ;;
-;; Addresses (IMM12):      ;;
-;; I                       ;;
-;; Constants (IMM8):       ;;
-;; v0                      ;;
-;; ----------------------- ;;
+From "rossys.rch8":
+ROS calling convention
+
+Addresses (IMM12):
+I
+
+Arguments (IMM8):
+v1 ... v5
+
+Return value:
+Addresses (IMM12):
+I
+Constants (IMM8):
+v0
 
 DOCUMENTATION STRUCTURE
 =======================
@@ -96,26 +107,33 @@ SYSCALL CODE (IMM12, HEX) | SYSCALL SIGNATURE (ACCORDING TO CALLING CONVENTION)
 
 I/O
 ===
-000h | imm8 r_puts(imm12 cstr)
+100h | imm8 r_puts(imm12 cstr)
     PUT String to standart output.
     
     cstr         : String to output
     Return value : Number of characters printed
 
-001h | imm8 r_putc(imm8 ch)
+101h | imm8 r_putc(imm8 ch)
     PUT Character to standart output.
 
     ch           : Character to output
     Return value : Character, which was outputed
 
-002h | imm8 r_putf(imm12 fmt, __VA_ARGS_OUT__)
+102h | imm8 r_putf(imm12 fmt, __VA_ARGS_OUT__)
     PUT Formatted string to standart output.
 
     fmt             : Format string
     __VA_ARGS_OUT__ : Values ( From v1 )
     Return value    : Number of characters printed
 
-003h | imm8 r_gets(imm12 buf, imm8 max)
+103h | imm8 r_putb(imm12 buf, imm8 max)
+    PUT Buffer
+
+    buf             : Binary buffer
+    max             : Binary buffer size
+    Return value    : Number of bytes printed
+
+104h | imm8 r_gets(imm12 buf, imm8 max)
     GET String from standart input.
 
     NOTE: Blocking operation
@@ -124,14 +142,14 @@ I/O
     max          : String buffer size
     Return value : Number of characters read
 
-004h | imm8 r_getc(void)
+105h | imm8 r_getc(void)
     GET Character from standart input.
 
     NOTE: Blocking operation
 
     Return value : Character
 
-005h | imm8 r_getf(imm12 fmt, __VA_ARGS_IN__)
+106h | imm8 r_getf(imm12 fmt, __VA_ARGS_IN__)
     GET Formatted string from standart input.
 
     NOTE: Blocking operation
@@ -142,7 +160,7 @@ I/O
 
 ARGUMENTS PARSING
 =================
-006h | imm8 r_geta(imm8 idx)
+200h | imm8 r_geta(imm8 idx)
     GET Argument from command line by index.
 
     NOTE: Argument will be located at address 1h,
@@ -151,7 +169,7 @@ ARGUMENTS PARSING
     idx          : Argument index
     Return value : 0 if success
 
-007h | imm8 r_getb(void)
+201h | imm8 r_getb(void)
     GET Buffer from command line.
 
     NOTE: Buffer will be located at address 1h,
@@ -162,60 +180,67 @@ ARGUMENTS PARSING
 
 CURSOR
 ======
-008h | imm8 r_shcr(void)
+300h | imm8 r_shcr(void)
     SHow CuRsor
 
     Return value : 0 if success
 
-009h | imm8 r_hdcr(void) 
+301h | imm8 r_hdcr(void) 
     HiDe CuRsor
 
     Return value : 0 if success
 
-00Ah | imm8 r_stcr(imm8 state)
+302h | imm8 r_stcr(imm8 state)
     SeT CuRsor
 
     state        : 0 if invisible, else visible
     Return value : 0 if success
 
-00Bh | imm8 r_mvcr(imm8 row, imm8 col)
+303h | imm8 r_mvcr(imm8 row, imm8 col)
     MoVe CuRsor
 
     row          : Screen row
     col          : Screen column
     Return value : 0 if success
 
+304 | imm8 r_atcr(imm8 high, imm8 low)
+    ATtribute of CuRsor
+
+    high         : High attribute
+    low          : Low attribute
+    Return value : 0 if success
+
 FLOW
 ====
-00Ch | void r_paus(void)
+400h | void r_paus(void)
     PAUSe
 
     NOTE: Switches system to SYS_IDLE mode and prints:
     "Press any key to continue. . .".
     NOTE: Blocking operation
 
-00Dh | void r_slms(imm12 ms)
+401h | void r_slms(imm12 ms)
     SLeep MilliSeconds
 
     NOTE: Blocking operation
 
     ms           : Amount of time to sleep in milliseconds
 
-00Eh | void r_exit(imm8 code)
+402h | void r_exit(imm8 code)
     EXIT
 
     NOTE: This syscall does not return to program
 
     code         : Exit code
 
-00Fh | void r_abrt(void)
+403h | void r_abrt(void)
     ABoRT
 
     NOTE: This syscall does not return to program
 
 LOG
 ===
-010h | imm8 r_log(imm8 type, imm12 fmt, __VA_ARGS_OUT__)
+500h | imm8 r_log(imm8 type, imm12 fmt, __VA_ARGS_OUT__)
     LOG
 
     NOTE: You cannot raise hard screen with this syscall
@@ -226,10 +251,68 @@ LOG
 
 SYSTEM ONLY
 ===========
-011h | void s_hder(imm8 code)
+600h | void s_hder(imm8 code)
     HarD ERrror
 
     NOTE: Raises red screen
     NOTE: This syscall does not return to program
 
     code         : fault code
+
+MATH
+====
+
+700h | imm8 r_cplt(imm8 a, imm8 b)
+    ComPare Less Than
+
+    a            : first operand
+    b            : second operand
+    Return value : a < b
+
+701h | imm8 r_cpgt(imm8 a, imm8 b)
+    ComPare Greater Than
+
+    a            : first operand
+    b            : second operand
+    Return value : a > b
+
+702h | imm8 r_cple(imm8 a, imm8 b)
+    ComPare Less or Equal than
+
+    a            : first operand
+    b            : second operand
+    Return value : a <= b
+
+703h | imm8 r_cpge(imm8 a, imm8 b)
+    ComPare Greater or Equal than
+
+    a            : first operand
+    b            : second operand
+    Return value : a >= b
+
+704h |  imm8 r_omul(imm8 a, imm8 b)
+    Operation MULtiply
+
+    a            : first operand
+    b            : second operand
+    Return value : (a * b) & 0xFF
+
+705h | imm8 r_odiv(imm8 a, imm8 b)
+    Operation DIVide
+
+    a            : first operand
+    b            : second operand
+    Return value : a / b
+
+706h | imm8 r_omod(imm8 a, imm8 b)
+    Operation MODulus
+
+    a            : first operand
+    b            : second operand
+    Return value : a % b
+
+707h | imm8 r_sqrt(imm8 a)
+    operation SQare RooT
+
+    a            : first operand
+    Return value : __sqrt__(a)
