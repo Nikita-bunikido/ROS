@@ -72,9 +72,16 @@ struct Input {
 #define ASM_UNUSED(x)           (void)(x)
 #define ASM_ASSERT(expr, ...)   do{ if(expr) break; __VA_OPT__(__VA_ARGS__;) _asm_assert(#expr, __FILE__, __LINE__); } while( 0 )
 static inline __attribute__((noreturn)) void _asm_assert(const char * const expr, const char *file, unsigned line) {
-    fprintf(stderr, "%s:%u: " ANSI_RED "ROS-CHIP-8 Assertion failed" ANSI_RESET ": \"%s\"\n", file, line, expr);
-    TOTAL_CLEANUP();
-    abort();
+    #if !defined(NDEBUG)
+        fprintf(stderr, "%s:%u: " ANSI_RED "ROS-CHIP-8 Assertion failed" ANSI_RESET ": \"%s\"\n", file, line, expr);
+        TOTAL_CLEANUP();
+        abort();
+    #else
+        ASM_UNUSED(expr);
+        ASM_UNUSED(file);
+        ASM_UNUSED(line);
+        abort();
+    #endif
 }
 #define ASM_ASSERT_NOT_NULL(x, ...)  do{ ASM_ASSERT((void *)(x) != NULL __VA_OPT__(,) __VA_ARGS__); }while( 0 );
 
