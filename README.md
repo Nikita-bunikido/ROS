@@ -73,7 +73,7 @@ Using Makefile:
   - Text editor
   - CHIP8 assembler
   - Basic interpreter
-- ...
+- Desktop emulator
 
 ### CHANGELOG
 
