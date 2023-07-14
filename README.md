@@ -50,7 +50,6 @@ Using Makefile:
 
 ### TODO
 
-- CHIP8 assembler ( for _X86_ )
 - CHIP-8 emulator
 - Programs executing from FLASH memory
 - Working with RAM
@@ -106,3 +105,4 @@ Using Makefile:
 - ROS-CHIP8 X86 Assembler core
 - ROS-CHIP8 X86 Assembler data segments
 - ROS-CHIP8 X86 Assembler define, include support
+- ROS-CHIP8 X86 Assembler
