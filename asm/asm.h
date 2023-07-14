@@ -136,7 +136,7 @@ struct Block {
     };
 };
 
-struct Block *blocks_parse(const struct Token *root, size_t *nbl);
+struct Block *blocks_parse(struct Token *root, size_t *nbl);
 int assemble_block(const struct Block *block, FILE *f);
 
 /* Conversions */

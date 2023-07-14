@@ -51,8 +51,8 @@ inline int token_cmp_cstr(struct Token *tok, const char *cstr) {
     return *p - *cstr;
 }
 
-inline int token_cmp_token(struct Token *tok1, struct Token *tok2) {
-    extern char *token_dup_data(struct Token *);
+inline int token_cmp_token(struct Token *tok1, const struct Token *tok2) {
+    extern char *token_dup_data(const struct Token *);
     
     char *temp = token_dup_data(tok2);
     int res = token_cmp_cstr(tok1, temp);

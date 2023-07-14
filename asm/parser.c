@@ -36,6 +36,24 @@ void dump_assembler(void) {
     fprintf(stdout, "Thank you for using ROS-CHIP-8 Assembler!\n");
 }
 
+void dump_total(void) {
+    fprintf(stdout, ANSI_CYAN "ROS-CHIP-8 Assembler has finished assembling:\n" ANSI_RESET
+                    ANSI_MAGENTA "Instructions" ANSI_RESET "\t\t: %zu\n"
+                    ANSI_MAGENTA "Files" ANSI_RESET "\t\t\t: %zu\n"
+                    ANSI_MAGENTA "Labels" ANSI_RESET "\t\t\t: %zu\n"
+                    ANSI_MAGENTA "Directives" ANSI_RESET "\t\t: %zu\n"
+                    ANSI_MAGENTA "Warnings" ANSI_RESET "\t\t: %zu\n"
+                    ANSI_MAGENTA "Errors" ANSI_RESET "\t\t\t: %zu\n"
+                    "---\n"
+                    ANSI_MAGENTA "Total" ANSI_RESET "\t\t\t: %zu bytes.\n"
+                    "\nFinal Status: %s\n",
+                    total_info.instructions, total_info.files,
+                    total_info.labels, total_info.directives,
+                    total_info.warnings, total_info.errors,
+                    total_info.bytes,
+                    total_info.success ? ANSI_GREEN "SUCCESS." ANSI_RESET : ANSI_RED "FAIL" ANSI_RESET);
+}
+
 void defenition_push(const struct Definition *def) {
     ASM_ASSERT(defines_stack_size <= DEFINES_STACK_CAP - 1);
     defines_stack[defines_stack_size ++] = *def;
@@ -659,21 +677,24 @@ int assemble_block(const struct Block *block, FILE *f) {
             return -1;
 
         raw = ((raw & 0xFF) << 8) | (raw >> 8);
+        total_info.bytes += 2;
         fwrite(&raw, 2, 1, f);
         return 0;
     }
 
     if (block->data.is_reserved) {
         const char *reserved_stub = "Built by ROS-CHIP-8 Assembler", *p = reserved_stub;
+        total_info.bytes += block->data.len;
+
         for (size_t i = 0; i < block->data.len; i++) {
             fwrite(p++, 1, 1, f);
             if (p[-1] == '\0')
                 p = reserved_stub;
-        }
-    
+        }    
         return 0;
     }
 
+    total_info.bytes += block->data.len;
     fwrite(block->data.raw, 1, block->data.len, f);
     return 0;
 }
@@ -706,9 +727,7 @@ static void block_correct_symbolic(struct Block *bl) {
         if (!def)
             ASM_ERROR(symb, "Unknown name \"%s\".", symb->data);
 
-        bool conv_imm12 = false;
         if ((asm_info[bl->ins.type].types[op] == OP_IMM12) && (def->type == OP_IMM8)) {
-            conv_imm12 = true;
             def->type = OP_IMM12;
             def->imm12 = def->imm8;
 
@@ -755,14 +774,14 @@ static void parse_includes(struct Token *root) {
     
     for (struct Token *tok = root; tok != NULL; tok = tok->next) {
         if (token_cmp_cstr(tok, "include")) continue;
-        const struct Token base = *tok;
+        struct Token base = *tok;
         struct Token *const basep = tok;
 
         tok = tok->next;
         if (tok->type != TOKEN_TYPE_STRING)
             ASM_ERROR(tok, "Include path must be string");
 
-        trim_string_quotes((struct Token *)tok);
+        trim_string_quotes(tok);
         input_create(&input, tok->data);
         STACK_PUSH(inputs_cleanup, input);
 
@@ -778,21 +797,25 @@ static void parse_includes(struct Token *root) {
     }
 }
 
-struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
+struct Block *blocks_parse(struct Token *root, size_t *nbl) {
     struct Block *bl_arr = NULL, bl;
     size_t bl_num = 0;
 
     parse_includes(root);
 
-    for (const struct Token *tok = root; tok != NULL; tok = tok->next) {
+    for (struct Token *tok = root; tok != NULL; tok = tok->next) {
         memset(&bl, 0, sizeof(struct Block));
 
-        if (!token_cmp_cstr(tok, "include")) continue;
+        if (!token_cmp_cstr(tok, "include")) {
+            total_info.directives ++;
+            continue;
+        }
 
         int ret_pseudo;
-        if ((ret_pseudo = try_parse_pseudo_instruction(&bl, (struct Token **)&tok)) != PSEUDO_INSTRUCTION_FAILURE) {
-            if (ret_pseudo == PSEUDO_INSTRUCTION_DO_NOT_PUSH) continue;
+        if ((ret_pseudo = try_parse_pseudo_instruction(&bl, &tok)) != PSEUDO_INSTRUCTION_FAILURE) {
+            total_info.directives ++;
 
+            if (ret_pseudo == PSEUDO_INSTRUCTION_DO_NOT_PUSH) continue;
             bl_arr = push_block(bl_arr, &bl_num, &bl);
             continue;
         }
@@ -819,6 +842,7 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 continue;
             }
 
+            total_info.labels ++;
             create_label(&defines_stack[defines_stack_size ++], bl_arr, bl_arr + bl_num, label);
             continue;
         }
@@ -888,6 +912,8 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
                 temp_block.ins = temp_instruction;
 
                 bl_arr = push_block(bl_arr, &bl_num, &temp_block);
+
+                total_info.instructions += 2;
                 goto _skip_default_parse_step;
             }
 
@@ -914,7 +940,10 @@ struct Block *blocks_parse(const struct Token *root, size_t *nbl) {
 
         constraint_check(bl.ins);
         bl_arr = push_block(bl_arr, &bl_num, &bl);
+        total_info.instructions ++;
+
 _skip_default_parse_step:
+        ;
     }
 
     blocks_correct_symbolic(bl_arr, bl_num);

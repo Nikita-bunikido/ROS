@@ -17,6 +17,7 @@
 #define ANSI_YELLOW             "\033[33m"
 #define ANSI_MAGENTA            "\033[35m"
 #define ANSI_CYAN               "\033[36m"
+#define ANSI_GREEN              "\033[32m"
 #define ANSI_RESET              "\033[0m"
 
 extern volatile Cleanup_Stack blocks_cleanup;
@@ -43,6 +44,18 @@ extern volatile struct Warning_Info {
         bool w_raw[4];
     };
 } warning_info;
+
+extern volatile struct Total_Info {
+    size_t instructions;
+    size_t files;
+    size_t labels;
+    size_t directives;
+    size_t warnings;
+    size_t errors;
+    size_t bytes;
+    bool success;
+} total_info;
+void dump_total(void);
 
 typedef struct Position Position;
 struct Position {
@@ -76,6 +89,7 @@ static inline __attribute__((format(printf, 2, 3))) void _asm_warning(struct Inp
     va_list vptr;
     va_start(vptr, fmt);
 
+    total_info.warnings ++;
     fprintf(stderr, "%s:%u:%u: " ANSI_YELLOW "ROS-CHIP-8 warning" ANSI_RESET ": ", input->file, input->pos.line, input->pos.character);
 
     vfprintf(stderr, fmt, vptr);
@@ -89,12 +103,15 @@ static inline __attribute__((noreturn, format(printf, 2, 3))) void _asm_error(st
     va_list vptr;
     va_start(vptr, fmt);
 
+    total_info.errors ++;
     fprintf(stderr, "%s:%u:%u: " ANSI_RED "ROS-CHIP-8 error" ANSI_RESET ": ", input->file, input->pos.line, input->pos.character);
 
     vfprintf(stderr, fmt, vptr);
     fputc('\n', stderr);
 
     va_end(vptr);
+
+    dump_total();
     TOTAL_CLEANUP();
     exit(EXIT_FAILURE);
 }

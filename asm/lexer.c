@@ -30,7 +30,7 @@ static inline __attribute__((always_inline)) struct Token *talloc(void){
     return malloc(sizeof(struct Token));
 }
 
-char *token_dup_data(struct Token *tok) {
+char *token_dup_data(const struct Token *tok) {
     char *buf;
     ASM_ASSERT_NOT_NULL(buf = malloc(tok->len + 1));
 
@@ -192,6 +192,8 @@ void input_delete(struct Input *self) {
 }
 
 void input_create(struct Input *self, const char *fname) {
+    total_info.files ++;
+
     struct Input input = {
         .file = fname,
         .pos = { 0u, 0u }

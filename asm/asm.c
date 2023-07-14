@@ -39,6 +39,7 @@ static void __attribute__((noinline)) _inputs_cleanup_callback(void *item) {
     input_delete(&input);
 }
 
+volatile struct Total_Info total_info = { 0 };
 volatile struct Warning_Info warning_info = { 0 };
 
 volatile Cleanup_Stack blocks_cleanup = { 0 };
@@ -112,7 +113,7 @@ int main(int argc, const char *argv[]) {
         Warn_Type wt;
         if ((wt = option_as_warn_type(arg)) != WARN_TYPE_UNKNOWN) {
             if (wt == WARN_TYPE_WALL){
-                memset(warning_info.w_raw, 1, sizeof(warning_info.w_raw));
+                memset((void *)warning_info.w_raw, 1, sizeof(warning_info.w_raw));
                 warning_info.w_error = false;
                 continue;
             }
@@ -168,7 +169,9 @@ int main(int argc, const char *argv[]) {
         STACK_CLEANUP(blocks_cleanup, blocks_cleanup_callback);
         STACK_CLEANUP(tokens_cleanup, tokens_cleanup_callback);
     }
-    TOTAL_CLEANUP();
 
+    total_info.success = true;
+    dump_total();
+    TOTAL_CLEANUP();
     return 0;
 }

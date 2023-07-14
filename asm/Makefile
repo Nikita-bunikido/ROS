@@ -1,5 +1,6 @@
 CC = gcc
 CFLAGS = -g0 -mno-ms-bitfields -s -O2 -Wall -Wextra -Wpedantic -Wno-strict-aliasing -fno-common
+CFLAGS += -Wno-int-to-pointer-cast -Wno-missing-braces -Wno-strict-aliasing -Wno-format
 TARGET = asm.exe
 
 OBJS = $(addsuffix .o, $(basename $(wildcard *.c) $(wildcard *.S)))
