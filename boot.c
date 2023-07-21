@@ -1,10 +1,12 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
+#include <util/delay.h>
 #include <string.h>
 
 #include "spi.h"
 #include "st7735.h"
 #include "keyboard.h"
+#include "memory.h"
 
 #include "font.h"
 #include "video.h"
@@ -41,6 +43,14 @@ void __callback welcome_flash(bool flag) {
     string_info.offset = (string_info.offset + 1) % (strlen((const char *)(string_info.raw)) + 1);
 }
 
+static void test_ram(void) {
+    for (int i = 0x55; i < 0xFF; i ++)
+        memory_write(i, 0x55);
+    
+    for (int i = 0xFF - 1; i >= 0x55; i --)
+        if (memory_read(i) != 0x55) HARD_ERROR(FAULT_RAM_MEMORY);
+}
+
 void ros_bootup(void) {
     /* from ros.c */
     extern void keyboard_input(enum Virtual_Key);
@@ -48,18 +58,20 @@ void ros_bootup(void) {
     /* Drivers */
     spi_device_init();
     st7735_init();
-    keyboard_init(keyboard_input);
-    idle_key = INVALID_KEY;
 
     /* Screen */
     clear_screen(0x0000);
     ros_puts_P(ATTRIBUTE_DEFAULT, preview, true);
     ros_flash(welcome_flash);
     ros_putchar(ATTRIBUTE_DEFAULT, '\n');
-
-    /* Test log system */
+    keyboard_init(keyboard_input);
     ros_graphic_timer_init();
-    ros_log(LOG_TYPE_INFO, "What a beautiful system.");
+
+    /* Memory & keyboard */
+    idle_key = INVALID_KEY;
+    memory_init();
+    test_ram();
+    ros_log(LOG_TYPE_INFO, "RAM tested successfully");
 
     /* Cursor & prompt */
     ros_put_prompt();
