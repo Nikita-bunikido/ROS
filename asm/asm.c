@@ -152,7 +152,7 @@ int main(int argc, const char *argv[]) {
 
         size_t blocks_num;
         struct Block *blocks = blocks_parse(troot, &blocks_num);
-
+        
         char result_path[PATH_MAX];
         generate_output_name(result_path, input_stack[i].file);
         FILE *f = fopen(result_path, "wb");

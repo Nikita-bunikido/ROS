@@ -283,7 +283,7 @@ static const struct Real_Instruction_Info asm_real_info[INS_MAX][MAX_VARIANTS] =
         {
             .noperands = 2,
             .types = { OP_REG12, OP_REG8 | OP_V0 },
-            .template = TEMPL_OXSS,
+            .template = TEMPL_OXSS2,
             .opcode4 = 0xF,
             .suffix = 0x1E
         }
