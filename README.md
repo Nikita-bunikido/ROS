@@ -50,9 +50,6 @@ Using Makefile:
 
 ### TODO
 
-- CHIP-8 emulator
-- Programs executing from FLASH memory
-- Working with RAM
 - Command shell
   - System commands
   - Unknown command detection
@@ -106,3 +103,6 @@ Using Makefile:
 - ROS-CHIP8 X86 Assembler data segments
 - ROS-CHIP8 X86 Assembler define, include support
 - ROS-CHIP8 X86 Assembler
+- CHIP-8 emulator
+- Programs executing from FLASH memory
+- Working with RAM
