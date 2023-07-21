@@ -1,8 +1,10 @@
+#include <ctype.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <string.h>
+#include <setjmp.h>
 
 #include <util/delay.h>
 #include <avr/io.h>
@@ -10,14 +12,26 @@
 #include <avr/pgmspace.h>
 
 #include "spi.h"
+#include "memory.h"
 #include "st7735.h"
 
+#include "chip8.h"
 #include "video.h"
 #include "keyboard.h"
+#include "builtin.h"
 #include "log.h"
 #include "ros.h"
 
 enum System_Mode sys_mode = SYSTEM_MODE_BUSY;
+
+static inline __attribute__((always_inline)) int mtolower(int ch) {
+    return (ch >= 'A') && (ch <= 'Z') ? tolower(ch) : ch;
+}
+
+int caseless_cmp(const char *str1, const char *str2) {
+    for(; *str1 && *str2 && (mtolower(*str2) == mtolower(*str1)); str1 ++, str2 ++);
+    return mtolower(*str1) - mtolower(*str2);
+}
 
 void ros_set_pin_direction(volatile uint8_t *port, volatile uint8_t *ddr, int pin, enum Pin_Direction dir) {
     switch (dir){
@@ -41,6 +55,32 @@ void ros_set_pin_direction(volatile uint8_t *port, volatile uint8_t *ddr, int pi
 }
 
 struct Input_Buffer ibuffer = { 0 };
+
+static int load_rex(void) {
+    struct Chip8_Context context;
+    uint16_t size;
+    uint8_t *raw;
+
+    if ((raw = get_builtin_program(&ibuffer, &size)) == NULL)
+        return -1;
+
+    for (Address addr = PROGRAM_START; addr < (Address)(size + PROGRAM_START); addr++, raw++)
+        memory_write(addr, pgm_read_byte(raw));
+
+    chip8_init(&context);
+    while (!context.halted && !setjmp(chip8_panic_buf))
+        chip8_cycle(&context);
+
+    if (!context.exit_code)
+        ros_log(LOG_TYPE_INFO, "Kernel level program executed successfully.");
+    else {
+        ros_log(LOG_TYPE_ERROR, "Kernel level program failed.");
+        ros_printf(ATTRIBUTE_DEFAULT, "Exit code: %X", context.exit_code);
+    }
+
+    ros_putchar(ATTRIBUTE_DEFAULT, '\n');
+    return 0;
+}
 
 static void return_to_input_mode(void) {
     sys_mode = SYSTEM_MODE_INPUT;
@@ -84,9 +124,9 @@ void __callback keyboard_nonprintable_enter(void){
     sys_mode = SYSTEM_MODE_BUSY;
     ros_putchar(ATTRIBUTE_DEFAULT, '\n');
 
-    for (int i = 0; i < 15; i++)
-        ros_log(LOG_TYPE_INFO, "Test");
-    
+    if (load_rex() < 0)
+        ros_log(LOG_TYPE_ERROR, "Could not find specified program.");
+
     return_to_input_mode();
 }
 

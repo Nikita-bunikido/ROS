@@ -13,6 +13,7 @@
 #define BIT_OFF(x, bit)     (x) = ((x) & ~BIT(bit))
 #define BIT_ON(x, bit)      (x) = ((x) | BIT(bit))
 #define BIT_EXT(x, bit)     (((x) >> (bit)) & 1)
+#define BIT_SET(x, bit, d)  do { BIT_OFF(x,bit); if(!(d)) break; BIT_ON(x,bit); }while( 0 )
 
 #define LO8(w)              ((w) & 0xFF)
 #define HI8(w)              (((w) >> 8) & 0xFF)
@@ -77,5 +78,8 @@ extern void __callback keyboard_nonprintable_left_arrow(void);
 extern void __callback keyboard_nonprintable_enter(void);
 extern void __callback keyboard_nonprintable_backspace(void);
 extern void __callback keyboard_nonprintable_tab(void);
+
+/* --------------- Misc --------------- */
+extern int caseless_cmp(const char *, const char *);
 
 #endif /* _ROS_H */

@@ -476,6 +476,10 @@ void disable_cursor(void)
     ros_putchar(ATTRIBUTE_DEFAULT, ibuffer.raw[ibuffer.cursor] ? ibuffer.raw[ibuffer.cursor] : ' ');
 }
 
+void set_cursor_position(v2 pos) {
+    cursor = pos;
+}
+
 ISR(TIMER0_COMPA_vect, ISR_NOBLOCK) {
     /* Triggerred every 0.01 second */
     flash_time += 1;

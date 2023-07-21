@@ -81,6 +81,7 @@ void ros_put_prompt(void);
 void clear_screen(uint16_t);
 void enable_cursor(void);
 void disable_cursor(void);
+void set_cursor_position(v2 pos);
 
 /* --------------- Other --------------- */
 void ros_apply_output_entrys(void);
