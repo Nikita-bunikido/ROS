@@ -1,0 +1,196 @@
+;; ------------------------ ;;
+;; ver.rch8 	 	        ;;
+;;                          ;;
+;; Prints short description ;;
+;; and OS version			;;
+;; ------------------------ ;;
+
+include "rossys.rch8"
+
+define TEXT_OVERLAY_CAP		7h
+define ROW_LEN				19
+
+define _TOP					0h
+define _SUB					1h
+define _MID					2h
+define _BOT					3h
+define _END					4h
+
+;; ========== E N T R Y P O I N T  ========== ;;
+;;
+;; ==========                      ========== ;;
+kernel_entry:
+	cls							; Clear screen
+	xor vE, vE					; Row counter
+
+_set_attribute:
+	set v1, 057h				; Low attribute
+	set v2, 0FFh				; High attribute ( unused )
+	cros r_atcr					;
+
+_row_loop:
+	set I, frame_layout			;
+	add I, vE					; Move I to current row
+	call frame_row				; Draw frame row
+	sne v0, 0					;
+	goto _overlay				; if end, draw text overlay
+	add vE, 1h					; Next row
+	goto _row_loop				;
+
+_overlay:
+	set I, overlay_data			;
+	xor vC, vC					; Text overlay counter
+
+_text_loop:
+	call overlay_row			; Draw overlay row
+	add vC, 1h					; Next overlay row
+	se vC, TEXT_OVERLAY_CAP		; 
+	goto _text_loop				; If not end, again
+
+_restore_cursor:
+	set v1, 0h					; Row
+	set v2, 0Bh					; Column
+	cros r_mvcr					;
+
+_done:
+	xor v1, v1					; Exit code
+	cros r_exit					;
+
+;; ========== T A B L E ========== ;;
+;; imm8 col
+;; imm8 row
+;; imm8 cstr[]
+;; ==========           ========== ;;
+overlay_data:
+	dataseg 1h, 1h, "ROS (Rom operating ", 0h dataend	
+	dataseg 1h, 2h, "system) version %d ", 0h dataend
+	dataseg 1h, 4h, "ROS is a small, DOS", 0h dataend
+	dataseg 1h, 5h, "-like, AVR-targetti", 0h dataend
+	dataseg 1h, 6h, "ng operating system", 0h dataend
+	dataseg 1h, 7h, "for NPAD-5 computin", 0h dataend
+	dataseg 1h, 8h, "g machine.         ", 0h dataend
+
+;; ========== S U B R O U T I N E ========== ;;
+;; ASSUMES: I in overlay_data
+;; MODIFIES: v0, v1, v2, v3, v4, v5, I
+;; RETURNS: Nothing
+;; ==========                     ========== ;;
+overlay_row:
+	load v0, v1					; Get position
+
+_set_position:
+	set v3, v0					;
+	set v4, v1					;
+	set v1, v3					; Row
+	set v2, v4					; Column
+	cros r_mvcr					;
+	
+_output_str:
+	set v5, 2					;
+	add I, v5					; I <- cstr
+	set v1, _ros_version		;
+	cros r_putf					;
+
+_next_overlay:
+	set v5, ROW_LEN				;
+	add v5, 1h					;
+	add I, v5				    ; I <- next position
+	ret							;
+
+;; ========== T A B L E ========== ;;
+;; imm8 kind
+;; ==========           ========== ;;
+frame_layout:
+	dataseg
+		0h, 2h, 2h, 1h,
+		2h, 2h, 2h, 2h,
+		2h, 3h, 4h
+	dataend
+
+;; ========== S U B R O U T I N E ========== ;;
+;; ASSUMES: I in frame_layout
+;; MODIFIES: v0, I
+;; RETURNS: If end: 0, else: 1
+;; ==========                     ========== ;;
+frame_row:
+	load v0, v0					; v0 <- kind
+	sne v0, _END				;
+	goto _frame_end				; If end
+	sne v0, _TOP				;
+	goto _frame_top				; If kind == _TOP
+	sne v0, _MID				;
+	goto _frame_mid				; If kind == _MID
+	sne v0, _SUB				;
+	goto _frame_sub				; If kind == _SUB
+	sne v0, _BOT				;
+	goto _frame_bot				; If kind == _BOT
+
+_frame_top:
+	set I, frame_top_data		;
+	goto _draw					;
+
+_frame_mid:
+	set I, frame_middle_data	;
+	goto _draw					;
+
+_frame_sub:
+	set I, frame_sub_data		;
+	goto _draw					;
+
+_frame_bot:
+	set I, frame_bottom_data	;
+
+_draw:
+	call row					; 
+	set v0, 1h					; Not end
+	ret							;
+	
+_frame_end:
+	xor v0, v0					; End
+	ret							;
+
+;; ========== T A B L E ========== ;;
+;; imm8 first_char
+;; imm8 second_char
+;; imm8 last_char
+;; ==========           ========== ;;
+frame_top_data:
+	dataseg 98h, 9ch, 8ah dataend
+frame_sub_data:
+	dataseg 96h, 93h, 85h dataend
+frame_middle_data:
+	dataseg 89h, 20h, 89h dataend
+frame_bottom_data:
+	dataseg 97h, 9ch, 8bh dataend
+
+;; ========== S U B R O U T I N E ========== ;;
+;; ASSUMES: I in frame_XXXX_data
+;; MODIFIES: v0, v1, v5, v8
+;; RETURNS: Nothing
+;; ==========                     ========== ;;
+row:
+	set v5, 1h					;
+	load v0, v0					; Get first character 
+
+_first_character:
+	set v1, v0					; v1 <- first character
+	cros r_putc					;
+	add I, v5					; Next character
+
+_row_start:
+	set v8, ROW_LEN				; Row length counter
+	load v0, v0					;
+	set v1, v0					;
+
+_row:
+	cros r_putc					; 
+	sub v8, 1h					; Next screen position
+	se v8, 0h					; 
+	goto _row					; If not end, again
+
+_final_char:
+	add I, v5					; Next character
+	load v0, v0					; 
+	set v1, v0					;
+	cros r_putc					;
+	ret							;

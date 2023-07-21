@@ -1,0 +1,22 @@
+;; ------------------------ ;;
+;; test.rch8 	 	        ;;
+;;                          ;;
+;; Basic test for emulator  ;;
+;; ------------------------ ;;
+
+include "rossys.rch8"
+
+;; ========== E N T R Y P O I N T  ========== ;;
+;;
+;; ==========                      ========== ;;
+entry:
+	set I, str
+	cros r_puts
+	
+	xor v0, v0
+	cros r_exit
+	
+str:
+	dataseg
+		"If everything is working, this string should appear.", 0h
+	dataend
