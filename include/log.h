@@ -9,7 +9,9 @@
 enum Critical_Code {
     FAULT_DRIVER_KEYBOARD      = 0x00,
     FAULT_KERNEL_BAD_INTERRUPT = 0x10,
+    FAULT_KERNEL_ZERO_DIVIDER  = 0x11,
     FAULT_VIDEO_MEMORY         = 0x20,
+    FAULT_RAM_MEMORY           = 0x30,
 };
 
 enum Log_Type {
