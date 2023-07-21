@@ -5,7 +5,7 @@ F_CPU  = 16000000UL
 # Compiler
 CC = avr-gcc
 CFLAGS = -DF_CPU=$(F_CPU) -Os -g -mmcu=$(DEVICE)
-CFLAGS += -I include/
+CFLAGS += -I include/ -I kernel/rch8/
 CFLAGS += -Wall -Wpedantic -Wextra 
 CFLAGS += -Wno-array-bounds -Wno-format -Wno-pointer-arith -Wno-switch
 

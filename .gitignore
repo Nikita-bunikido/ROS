@@ -9,6 +9,8 @@
 
 # Other
 *.txt
+*.zip
+*.rex
 asm/*.xml
 asm/echo*.rch8
 
