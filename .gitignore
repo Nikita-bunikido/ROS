@@ -24,7 +24,5 @@ asm/*.exe
 work/
 
 # Not in use
-include/chip8.h
-include/filesys.h
 api.c
 io.c
