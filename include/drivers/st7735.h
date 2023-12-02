@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <avr/io.h>
 
-#include "ros.h"
+#include <ros/ros-for-headers.h>
 
 #define ST7735_MAX_ARGS     24
 #define ST7735_DC_PIN       1

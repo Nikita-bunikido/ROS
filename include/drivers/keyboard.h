@@ -1,14 +1,16 @@
 #ifndef _KEYBOARD_H
 #define _KEYBOARD_H
 
-#include "ros.h"
-
-#define KEYBOARD_SHLD_PIN       0
-#define KEYBOARD_CLK_PIN        1
-#define KEYBOARD_SO_PIN         2
-#define KEYBOARD_INTERRUPT_PIN  2
+#include <ros/ros-for-headers.h>
 
 #define INVALID_KEY             (enum Virtual_Key)(0xFF)
+
+enum {
+    KEYBOARD_SHLD_PIN      = 0,
+    KEYBOARD_CLK_PIN       = 1,
+    KEYBOARD_SO_PIN        = 2,
+    KEYBOARD_INTERRUPT_PIN = 2
+};
 
 #define KEY(sym,code)   VK_##sym = code,
 enum Virtual_Key {

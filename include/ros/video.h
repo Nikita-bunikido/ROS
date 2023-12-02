@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <assert.h>
 
-#include "ros.h"
+#include <ros/ros-for-headers.h>
 
 #define TIMER0_PRESCALER    1024
 #define VGA_SWITCH(a)       (a) = (((a) & 0x88) | (((a) & 0x7) << 0x4) | (((a) & 0x70) >> 4))

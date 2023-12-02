@@ -2,7 +2,8 @@
 #define _SPI_H
 
 #include <assert.h>
-#include "ros.h"
+
+#include <ros/ros-for-headers.h>
 
 #define SPI_SCK_FREQUENCY_PRESCALER     4
 
