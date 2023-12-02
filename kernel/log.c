@@ -3,8 +3,9 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
-#include "video.h"
-#include "log.h"
+#include <ros/video.h>
+#include <ros/log.h>
+#include <ros/ros-for-modules.h>
 
 #define ATTRIB_INFO    (struct Attribute){ 1, 1, 1,  0,  0, 0, 1,  1 }
 #define ATTRIB_WARN    (struct Attribute){ 1, 1, 0,  0,  0, 0, 0,  1 }

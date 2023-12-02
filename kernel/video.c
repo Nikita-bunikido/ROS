@@ -9,15 +9,15 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 
-#include "spi.h"
-#include "st7735.h"
+#include <drivers/spi.h>
+#include <drivers/st7735.h>
+#include <drivers/keyboard.h>
 
 #define _INCLUDE_FONT
-#include "font.h"
-#include "keyboard.h"
-#include "video.h"
-#include "log.h"
-#include "ros.h"
+#include <ros/font.h>
+#include <ros/video.h>
+#include <ros/log.h>
+#include <ros/ros-for-modules.h>
 
 #if TIMER0_PRESCALER == -1
     #define CS_BITS (uint8_t)0
@@ -71,7 +71,7 @@ static inline __attribute__((always_inline, const)) uint16_t vga_to_rgb565(const
     if (raw & 0x1) result |= 0x1F << 11;
     if (raw & 0x2) result |= 0x3F << 5;
     if (raw & 0x4) result |= 0x1F << 0;
-    return (result << 8) | (result >> 8); /* LE -> BE */
+    return BSWAP16(result);
 }
 
 static void __attribute__((noinline)) letter_lookup(uint8_t *dest, unsigned char let, uint8_t attrib, size_t dest_size) {
