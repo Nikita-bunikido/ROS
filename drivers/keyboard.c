@@ -6,11 +6,12 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-#include "video.h"
-#include "spi.h"
-#include "keyboard.h"
-#include "log.h"
-#include "ros.h"
+#include <drivers/spi.h>
+#include <drivers/keyboard.h>
+
+#include <ros/video.h>
+#include <ros/log.h>
+#include <ros/ros-for-modules.h>
 
 #ifndef NDEBUG
     /* Speed-up emulator */
@@ -35,7 +36,7 @@ static bool shift_mode = false,
 static void __callback keyboard_nonprintable_shift(void)    { shift_mode = true; }
 static void __callback keyboard_nonprintable_capslock(void) { caps_mode = !caps_mode; }
 
-static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[0xA] = {
+static const Keyboard_Nonprintable_Callback keyboard_nonprintable_callbacks[] = {
     keyboard_nonprintable_down_arrow,
     keyboard_nonprintable_right_arrow,
     keyboard_nonprintable_up_arrow,
@@ -73,7 +74,8 @@ void __driver keyboard_init(Keyboard_User_Callback input_callback) {
     ROS_SET_PIN_DIRECTION(C, KEYBOARD_SO_PIN, PIN_DIRECTION_INPUT);
     ROS_SET_PIN_DIRECTION(D, KEYBOARD_INTERRUPT_PIN, PIN_DIRECTION_INPUT_PULLUP);
 
-    EIMSK |= BIT(INT0);
+    EIMSK |= BIT(INT0);                         /* Enable INT0 */
+    EICRA |= BIT(ISC01) | BIT(ISC00);           /* Rising edge mode */
     sei();
 }
 
