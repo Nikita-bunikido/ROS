@@ -3,11 +3,23 @@ DEVICE = atmega328p
 F_CPU  = 16000000UL
 
 # Compiler
-CC = avr-gcc
-CFLAGS = -DF_CPU=$(F_CPU) -Os -g -mmcu=$(DEVICE)
+CC = avr-gcc -mmcu=$(DEVICE)
+CFLAGS = -pipe -pedantic -std=gnu11 -Os -g0 -fno-common -fno-exceptions -fno-pic -fno-pie
 CFLAGS += -I include/ -I kernel/rch8/
-CFLAGS += -Wall -Wpedantic -Wextra 
+CFLAGS += -Wall -Wpedantic -Wextra -Werror=attributes -Werror=implicit-function-declaration
 CFLAGS += -Wno-array-bounds -Wno-format -Wno-pointer-arith -Wno-switch
+
+# ROS Security
+SECURITY_MAX = 1
+
+ifeq ($(SECURITY_MAX), 1)
+	CFLAGS += -D_SECURITY_API_ZERO_DIVIDER_CHECK
+	CFLAGS += -D_SECURITY_KERNEL_CLEAR_PROGRAM
+	CFLAGS += -D_SECURITY_KERNEL_STACK_PROTECTION
+	CFLAGS += -D_SECURITY_KERNEL_ADVANCED_STACK_PROTECTION
+endif
+
+CFLAGS += -DF_CPU=$(F_CPU)
 
 # Objects
 DRIVERS_DIR = drivers
