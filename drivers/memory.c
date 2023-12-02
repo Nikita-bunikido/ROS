@@ -1,10 +1,12 @@
 #include <util/delay.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/pgmspace.h>
 
-#include "memory.h"
-#include "keyboard.h"
-#include "ros.h"
+#include <drivers/memory.h>
+#include <drivers/keyboard.h>
+
+#include <ros/ros-for-modules.h>
 
 #define ADDRESS_LEN               15
 
@@ -47,12 +49,13 @@ void memory_init(void) {
     sei();
 }
 
-void memory_write(Address addr, uint8_t data) {
+uint8_t memory_write(Address addr, uint8_t data) {
     set_address_bus(addr);
     set_data_bus(data);
 
     BIT_OFF(PORTB, MEMORY_RW_PIN);
     BIT_ON(PORTB, MEMORY_RW_PIN);
+    return data;
 }
 
 uint8_t memory_read(Address addr) {
@@ -66,4 +69,20 @@ uint8_t memory_read(Address addr) {
     BIT_ON(PORTB, MEMORY_RW_PIN);
 
     return read_data_bus();
+}
+
+void memory_write_buffer(Address addr, const void *data, size_t size) {
+    if (!size)
+        return;
+    
+    while (size-- > 0)
+        memory_write(addr ++, *(uint8_t *)data ++);
+}
+
+void memory_write_buffer_P(Address addr, const void *data, size_t size) {
+    if (!size)
+        return;
+
+    for (const uint8_t *datap = data; size-- > 0; datap ++)
+        memory_write(addr ++, pgm_read_byte(datap));
 }
