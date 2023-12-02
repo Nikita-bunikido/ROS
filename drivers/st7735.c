@@ -3,9 +3,10 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
-#include "ros.h"
-#include "spi.h"
-#include "st7735.h"
+#include <drivers/spi.h>
+#include <drivers/st7735.h>
+
+#include <ros/ros-for-modules.h>
 
 static const struct ST7735_Command startup[] PROGMEM = {
     { ST7735_SWRESET, 0, { 0 }, 150 },

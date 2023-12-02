@@ -1,8 +1,9 @@
 #include <stdbool.h>
 #include <avr/interrupt.h>
 
-#include "ros.h"
-#include "spi.h"
+#include <drivers/spi.h>
+
+#include <ros/ros-for-modules.h>
 
 #if SPI_SCK_FREQUENCY_PRESCALER == 4
     #define SPI_SPR (uint8_t)0
