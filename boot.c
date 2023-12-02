@@ -3,15 +3,7 @@
 #include <util/delay.h>
 #include <string.h>
 
-#include "spi.h"
-#include "st7735.h"
-#include "keyboard.h"
-#include "memory.h"
-
-#include "font.h"
-#include "video.h"
-#include "log.h"
-#include "ros.h"
+#include <ros/ros-for-modules-all.h>
 
 static const unsigned char preview[] PROGMEM = {
     0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,0x20,
